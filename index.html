@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assistant</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --card: #1a1d24;
+    --accent: #4da3ff;
+    --text: #e8e8e8;
+    --muted: #9aa0a8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.4rem; margin: 16px 0; }
+  .card-link {
+    display: block;
+    background: var(--card);
+    border-radius: 12px;
+    padding: 18px 16px;
+    margin-bottom: 14px;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .card-link h2 {
+    font-size: 1.1rem;
+    margin: 0 0 4px;
+    color: var(--accent);
+  }
+  .card-link p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  .card-link.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+  <h1>Assistant</h1>
+
+  <a class="card-link" href="dayplanner/">
+    <h2>🌤️ Office</h2>
+    <p>Weather, outfit suggestion, and commute options</p>
+  </a>
+
+  <a class="card-link disabled" href="gym/">
+    <h2>🏋️ Gym</h2>
+    <p>Coming soon</p>
+  </a>
+</body>
+</html>
