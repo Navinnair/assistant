@@ -698,19 +698,60 @@ function showMoreRoutes() {
   if (cached) renderRoutes("routesList", cached, visibleCount);
 }
 
+// Static "tomorrow" plan: first train around your usual time, no live countdown.
+function renderTomorrowPlan(summaries) {
+  const card = document.getElementById("leaveByCard");
+  card.style.display = "block";
+  document.getElementById("disruptionBanner").style.display = "none";
+  leaveActive = false;
+  updateLeaveBar();
+
+  const origin = selectedDirection === "office" ? "home" : "office";
+  const dest = selectedDirection === "office" ? "To Office" : "To Home";
+  document.getElementById("leaveByTitle").textContent = `Tomorrow — ${dest}`;
+
+  const s = summaries[0];
+  const leaveTime = new Date(s.departure);
+  const board = s.legs[0] ? new Date(s.legs[0].boardTime) : leaveTime;
+  const line = s.legs[0] ? s.legs[0].line : "walk";
+
+  const el = document.getElementById("leaveBy");
+  el.innerHTML = `
+    <div class="leave-grid">
+      <div class="leave-col">
+        <div class="leave-label">Leave ${origin}</div>
+        <div class="leave-clock">${fmtTime(leaveTime.toISOString())}</div>
+        <div class="leave-plan">around this time</div>
+      </div>
+      <div class="leave-col">
+        <div class="leave-label">First train (${line})</div>
+        <div class="leave-clock">${fmtTime(board.toISOString())}</div>
+        <div class="leave-plan">planning ahead</div>
+      </div>
+    </div>
+    <div class="leave-sub">${s.walk ? `${s.walk.minutes} min walk to ${s.walk.dest}` : "no walk needed"} · tomorrow</div>
+  `;
+  flashIn(el);
+}
+
 function updateLeaveBy() {
   const card = document.getElementById("leaveByCard");
   // Follows the master direction toggle: "office" = leave home → office,
   // "home" = leave office → home. Live countdown only makes sense today.
   const summaries = routeCache[selectedDirection];
-  // No leave-by on tomorrow, with no data, or on a day off — unless the user
-  // opted to see travel times anyway via the day-off banner toggle.
-  const hideForDayOff = dayOffInfo(selectedDay) && !showLeaveOnDayOff;
-  if (selectedDay !== 0 || hideForDayOff || !summaries || !summaries.length) {
+  const off = dayOffInfo(selectedDay);
+  const noData = !summaries || !summaries.length;
+  // Day off hides it (unless today + the "heading out" toggle); no data hides it.
+  if (noData || (off && !(selectedDay === 0 && showLeaveOnDayOff))) {
     card.style.display = "none";
     leaveActive = false;
     updateLeaveBar();
     document.getElementById("disruptionBanner").style.display = "none";
+    return;
+  }
+  // Tomorrow (workday) → static plan, no live countdown.
+  if (selectedDay === 1) {
+    renderTomorrowPlan(summaries);
     return;
   }
   card.style.display = "block";
