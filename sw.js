@@ -1,7 +1,7 @@
 // Suite-wide service worker: home + trip + gym. The dayplanner has its own
 // richer worker under /dayplanner/ (more specific scope, takes precedence).
 // Bump this version on each deploy to refresh the cached shells.
-const CACHE = "assistant-suite-v3";
+const CACHE = "assistant-suite-v4";
 const ASSETS = [
   "./",
   "./index.html",
