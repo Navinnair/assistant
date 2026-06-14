@@ -84,6 +84,19 @@ function weatherIcon(category, size) {
   return svg;
 }
 
+// Outfit icons — outline SVGs matching the weather icon style.
+const OUTFIT_ICONS = {
+  shirt: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3 5 6l2 3 2-1.4V21h6V7.6L17 9l2-3-4-3a3 3 0 0 1-6 0Z"/></svg>`,
+  sweater: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3 4 7l2 6 3-2.2V21h6V10.8l3 2.2 2-6-5-4a3 3 0 0 1-6 0Z"/></svg>`,
+  coat: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3 5 6l2 4 2-1.2V21h6V8.8l2 1.2 2-4-4-3a3 3 0 0 1-6 0Z"/><path d="M12 6v15"/></svg>`,
+  umbrella: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 8 0 0 1 9 8H3a9 8 0 0 1 9-8Z"/><path d="M12 11v7a2.5 2.5 0 0 0 5 0"/><path d="M12 3V2"/></svg>`,
+};
+
+function outfitIcon(key) {
+  if (key === "sun") return weatherIcon("sun", 36);
+  return OUTFIT_ICONS[key] || "";
+}
+
 // Hourly entries for the given day, starting from "now" (today) or the start
 // of waking hours (tomorrow), at a fixed step, capped to waking hours.
 function hourlyEntries(data, dayIdx, count, stepH) {
@@ -257,33 +270,33 @@ function renderOutfit(data, dayIdx) {
   const wind = daytimeMaxWind(data, dayIdx);
   const minTemp = daytimeMinTemp(data, dayIdx);
 
-  let wearIcon, wearText, jacketIcon, jacketText, notes = [];
+  let wearKey, wearText, jacketKey, jacketText, notes = [];
 
   if (minTemp < 2) {
-    wearIcon = "🧶";
+    wearKey = "sweater";
     wearText = "Thermal layers + warm sweater";
-    jacketIcon = "🧥❄️";
+    jacketKey = "coat";
     jacketText = "Big winter coat";
     notes.push("Scarf + gloves recommended");
   } else if (minTemp < 9) {
-    wearIcon = "🧶";
+    wearKey = "sweater";
     wearText = "Warm sweater";
-    jacketIcon = "🧥";
+    jacketKey = "coat";
     jacketText = "Medium/warm coat";
   } else if (minTemp < 15) {
-    wearIcon = "👕";
+    wearKey = "shirt";
     wearText = "Long sleeve / light sweater";
-    jacketIcon = "🧥";
+    jacketKey = "coat";
     jacketText = "Light jacket";
   } else if (minTemp < 21) {
-    wearIcon = "👕";
+    wearKey = "shirt";
     wearText = "T-shirt or light top";
-    jacketIcon = "🧥";
+    jacketKey = "sun";
     jacketText = "❌ No";
   } else {
-    wearIcon = "👕";
+    wearKey = "shirt";
     wearText = "T-shirt";
-    jacketIcon = "☀️";
+    jacketKey = "sun";
     jacketText = "❌ No";
   }
 
@@ -292,24 +305,23 @@ function renderOutfit(data, dayIdx) {
   }
 
   const needsUmbrella = rainProb >= 30;
-  const umbrellaIcon = "☔";
   const umbrellaText = needsUmbrella ? "Yes" : "❌ No";
 
   const el = document.getElementById("outfit");
   el.innerHTML = `
     <div class="outfit-sections">
       <div class="outfit-section">
-        <div class="outfit-icon">${wearIcon}</div>
+        <div class="outfit-icon">${outfitIcon(wearKey)}</div>
         <div class="outfit-label">Wear</div>
         <div class="outfit-text">${wearText}</div>
       </div>
       <div class="outfit-section">
-        <div class="outfit-icon">${jacketIcon}</div>
+        <div class="outfit-icon">${outfitIcon(jacketKey)}</div>
         <div class="outfit-label">Outerwear</div>
         <div class="outfit-text">${jacketText}</div>
       </div>
       <div class="outfit-section">
-        <div class="outfit-icon">${umbrellaIcon}</div>
+        <div class="outfit-icon">${outfitIcon("umbrella")}</div>
         <div class="outfit-label">Umbrella</div>
         <div class="outfit-text">${umbrellaText}</div>
       </div>
@@ -491,14 +503,20 @@ function renderRoutes(elementId, summaries, count) {
   const shown = summaries.slice(0, count);
   const html = shown.map(s => {
     const legsHtml = s.legs.length
-      ? s.legs.map(l => `
-          <div class="route-leg">
-            <span class="route-line" style="background:${lineColor(l.line, l.transportType)}">${l.line}</span> → ${l.direction}
-            ${l.realTime ? '<span class="route-livetag">● live</span>' : ""}${occupancyTag(l.occupancy)}<br>
-            <span class="route-station">${fmtTime(l.boardTime)} ${l.board}</span> →
-            <span class="route-station">${fmtTime(l.alightTime)} ${l.alight}</span>
-            ${l.warnings.map(w => `<div class="route-warning">⚠️ ${w}</div>`).join("")}
-          </div>`).join("")
+      ? `<div class="route-legs">` + s.legs.map(l => {
+          const meta = [
+            l.realTime ? '<span class="route-livetag">● live</span>' : "",
+            occupancyTag(l.occupancy),
+          ].filter(Boolean).join(" ");
+          return `
+            <div class="leg-line">
+              <span class="route-line" style="background:${lineColor(l.line, l.transportType)}">${l.line}</span> → ${l.direction}
+              ${meta ? `<span class="leg-meta">${meta}</span>` : ""}
+            </div>
+            <div class="leg-stop"><i class="dot"></i><span class="route-station">${fmtTime(l.boardTime)} ${l.board}</span></div>
+            <div class="leg-stop"><i class="dot end"></i><span class="route-station">${fmtTime(l.alightTime)} ${l.alight}</span></div>
+            ${l.warnings.map(w => `<div class="route-warning">⚠️ ${w}</div>`).join("")}`;
+        }).join("") + `</div>`
       : `<div class="route-leg">Walk only</div>`;
     const walkHtml = s.walk
       ? `<div class="route-walk">🚶 ${s.walk.minutes} min walk to ${s.walk.dest}</div>`

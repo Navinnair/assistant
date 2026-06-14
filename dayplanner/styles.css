@@ -134,7 +134,15 @@
     color: var(--muted);
     margin-bottom: 6px;
   }
-  .outfit-icon { font-size: 2.2rem; text-align: center; margin-bottom: 6px; }
+  .outfit-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    margin-bottom: 6px;
+    color: var(--accent);
+  }
+  .outfit-icon svg { display: block; }
   .outfit-text { text-align: center; font-size: 0.95rem; font-weight: 700; }
   .outfit-notes { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 10px; }
   .route {
@@ -265,6 +273,47 @@
     color: var(--muted);
     margin-top: 4px;
     line-height: 1.4;
+  }
+  /* Journey rail: a vertical line down the legs with a dot at each stop. */
+  .route-legs {
+    position: relative;
+    margin-top: 6px;
+    padding-left: 18px;
+  }
+  .route-legs::before {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 8px;
+    bottom: 9px;
+    width: 2px;
+    background: var(--outline);
+  }
+  .leg-line {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+  .leg-line:first-child { margin-top: 0; }
+  .leg-meta { margin-left: 4px; }
+  .leg-stop {
+    position: relative;
+    font-size: 0.8rem;
+    color: var(--text);
+    line-height: 1.7;
+  }
+  .leg-stop .dot {
+    position: absolute;
+    left: -16px;
+    top: 7px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .leg-stop .dot.end {
+    background: var(--card-high);
+    border: 2px solid var(--outline);
   }
   .route-walk {
     font-size: 0.75rem;
