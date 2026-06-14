@@ -1,3 +1,7 @@
+// Build version — keep in sync with the SW cache (my-planner-vN). Shown in the
+// footer so it's easy to confirm you're on the latest code.
+const APP_VERSION = "v15";
+
 // --- Single place to tweak everything ---
 const CONFIG = {
   // Fixed coordinates resolved via MVG location lookup.
@@ -1023,7 +1027,8 @@ function renderUpdated() {
   const el = document.getElementById("updated");
   if (!lastUpdatedAt) { el.textContent = ""; return; }
   const mins = Math.floor((Date.now() - lastUpdatedAt) / 60000);
-  el.textContent = mins < 1 ? "Updated just now" : `Updated ${mins} min ago`;
+  const when = mins < 1 ? "Updated just now" : `Updated ${mins} min ago`;
+  el.textContent = `${when} · ${APP_VERSION}`;
   el.classList.toggle("stale", mins >= 6);
 }
 
@@ -1059,6 +1064,16 @@ function toggleHourly() {
   setHourly(open);
 }
 setHourly(localStorage.getItem("hourly_open") === "1"); // default collapsed
+
+// --- One-time discoverability hints for the hidden gestures ---
+function dismissHints() {
+  localStorage.setItem("hints_seen_v1", "1");
+  document.getElementById("hintToast").style.display = "none";
+}
+function maybeShowHints() {
+  if (localStorage.getItem("hints_seen_v1")) return;
+  document.getElementById("hintToast").style.display = "flex";
+}
 
 // --- localStorage cache (instant load + offline fallback) ---
 const CACHE_KEY = "dayplanner_weather_cache";
@@ -1135,6 +1150,7 @@ setToggle("btnDirOffice", selectedDirection === "office");
 document.getElementById("routesTitle").textContent = routesTitleFor(selectedDirection, selectedDay);
 
 loadAll();
+maybeShowHints();
 
 // Auto-refresh every 5 minutes
 setInterval(loadAll, CONFIG.refreshMs);
