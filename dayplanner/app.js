@@ -405,9 +405,15 @@ function renderRoutes(elementId, summaries, count) {
     const walkHtml = s.walk
       ? `<div class="route-walk">🚶 ${s.walk.minutes} min walk to ${s.walk.dest}</div>`
       : "";
+    // Route-level disruption flag: any leg carrying a warning/info message.
+    const allWarnings = s.legs.flatMap(l => l.warnings);
+    const alertHtml = allWarnings.length
+      ? `<div class="route-alert">⚠️ ${allWarnings[0]}${allWarnings.length > 1 ? ` (+${allWarnings.length - 1} more)` : ""}</div>`
+      : "";
     return `
       <div class="route" data-departure="${s.departure}">
         <div class="route-time">${fmtTime(s.departure)} → ${fmtTime(s.arrival)} (${fmtDuration(s.durationMs)})<span class="route-rel"></span></div>
+        ${alertHtml}
         ${walkHtml}
         ${legsHtml}
       </div>`;
@@ -439,14 +445,22 @@ function refreshRouteLive() {
     const dep = row.getAttribute("data-departure");
     const rel = row.querySelector(".route-rel");
     if (live && dep) {
-      const diff = Math.round((new Date(dep) - now) / 60000);
+      const diffExact = (new Date(dep) - now) / 60000;
+      const diff = Math.round(diffExact);
+      // Drop rows whose leave time has passed — old options are just clutter.
+      if (diffExact < 0) {
+        row.style.display = "none";
+        row.classList.remove("chosen");
+        return;
+      }
+      row.style.display = "";
       if (rel) {
-        if (diff < 0) { rel.textContent = " · departed"; rel.className = "route-rel gone"; }
-        else if (diff === 0) { rel.textContent = " · now"; rel.className = "route-rel " + leaveTier(0); }
+        if (diff === 0) { rel.textContent = " · now"; rel.className = "route-rel " + leaveTier(0); }
         else { rel.textContent = ` · in ${diff} min`; rel.className = "route-rel " + leaveTier(diff); }
       }
       row.classList.toggle("chosen", dep === chosenDep);
     } else {
+      row.style.display = "";
       if (rel) { rel.textContent = ""; rel.className = "route-rel"; }
       row.classList.remove("chosen");
     }

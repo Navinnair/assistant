@@ -170,6 +170,19 @@
     font-weight: 600;
     margin-bottom: 10px;
   }
+  .route-alert {
+    color: #ffb4ab;
+    background: rgba(255,180,171,0.10);
+    border-radius: 8px;
+    padding: 4px 8px;
+    margin-top: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  :root[data-theme="light"] .route-alert {
+    color: #ba1a1a;
+    background: rgba(186,26,26,0.08);
+  }
   .route-rel { font-weight: 600; font-size: 0.85rem; }
   .route-rel.urgent { color: #ffb4ab; }
   .route-rel.soon { color: #ffd479; }
