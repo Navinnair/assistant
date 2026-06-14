@@ -1,6 +1,6 @@
 // Build version — keep in sync with the SW cache (my-planner-vN). Shown in the
 // footer so it's easy to confirm you're on the latest code.
-const APP_VERSION = "v16";
+const APP_VERSION = "v17";
 
 // --- Single place to tweak everything ---
 const CONFIG = {
