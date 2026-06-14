@@ -148,7 +148,7 @@ async function geocode(name) {
 async function fetchTripWeather(lat, lon, start, end) {
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
     `&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode,windspeed_10m_max` +
-    `&hourly=temperature_2m,precipitation_probability,weathercode,windspeed_10m` +
+    `&hourly=temperature_2m,apparent_temperature,precipitation_probability,weathercode,windspeed_10m` +
     `&timezone=auto&start_date=${start}&end_date=${end}`;
   return fetch(url).then((r) => r.json());
 }
@@ -270,7 +270,7 @@ function tripOverall(data) {
     if (data.daily.temperature_2m_max[i] == null) continue;
     valid++;
     if (sunnyHours(data, i) >= SUNNY_HOURS) anySunny = true;
-    const dMin = daytimeReduce(data, i, "temperature_2m", Math.min, Infinity);
+    const dMin = daytimeReduce(data, i, "apparent_temperature", Math.min, Infinity);
     const dRain = daytimeReduce(data, i, "precipitation_probability", Math.max, 0);
     const dWind = daytimeReduce(data, i, "windspeed_10m", Math.max, 0);
     minT = Math.min(minT, dMin == null ? data.daily.temperature_2m_min[i] : dMin);
@@ -306,7 +306,7 @@ function renderTrip(place, data) {
     const dayRain = data.daily.precipitation_probability_max[i];
     const dayWind = Math.round(data.daily.windspeed_10m_max[i]);
 
-    const wMin = daytimeReduce(data, i, "temperature_2m", Math.min, Infinity);
+    const wMin = daytimeReduce(data, i, "apparent_temperature", Math.min, Infinity);
     const wRain = daytimeReduce(data, i, "precipitation_probability", Math.max, 0);
     const wWind = daytimeReduce(data, i, "windspeed_10m", Math.max, 0);
     const o = computeOutfit(wMin == null ? min : wMin, wRain == null ? dayRain : wRain, wWind == null ? dayWind : wWind);

@@ -1,6 +1,6 @@
 // Build version — keep in sync with the SW cache (my-planner-vN). Shown in the
 // footer so it's easy to confirm you're on the latest code.
-const APP_VERSION = "v20";
+const APP_VERSION = "v21";
 
 // --- Single place to tweak everything ---
 const CONFIG = {
@@ -148,7 +148,7 @@ function fmtDuration(ms) {
 async function fetchWeather() {
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${HOME.lat}&longitude=${HOME.lon}` +
     `&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode,windspeed_10m_max` +
-    `&hourly=temperature_2m,precipitation_probability,weathercode,windspeed_10m` +
+    `&hourly=temperature_2m,apparent_temperature,precipitation_probability,weathercode,windspeed_10m` +
     `&timezone=Europe%2FBerlin&forecast_days=2`;
   const res = await fetch(url);
   return res.json();
@@ -254,6 +254,13 @@ function daytimeMinTemp(data, dayIdx) {
   return daytimeHourlyReduce(data, dayIdx, "temperature_2m", Math.min, Infinity);
 }
 
+// Coldest "feels like" (apparent) temp during waking hours — what the outfit
+// decision should use, since wind chill/humidity change what you actually need.
+function daytimeApparentMin(data, dayIdx) {
+  const v = daytimeHourlyReduce(data, dayIdx, "apparent_temperature", Math.min, Infinity);
+  return v == null || !isFinite(v) ? daytimeMinTemp(data, dayIdx) : v;
+}
+
 function daytimeMaxWind(data, dayIdx) {
   return daytimeHourlyReduce(data, dayIdx, "windspeed_10m", Math.max, 0);
 }
@@ -298,7 +305,9 @@ function renderWeather(data, dayIdx) {
 function renderOutfit(data, dayIdx) {
   const rainProb = daytimeRainChance(data, dayIdx);
   const wind = daytimeMaxWind(data, dayIdx);
-  const minTemp = daytimeMinTemp(data, dayIdx);
+  const realMin = daytimeMinTemp(data, dayIdx);
+  // Dress for what it feels like (wind chill/humidity), not the raw reading.
+  const minTemp = daytimeApparentMin(data, dayIdx);
 
   let wearKey, wearText, jacketKey, jacketText, notes = [];
 
@@ -328,6 +337,12 @@ function renderOutfit(data, dayIdx) {
     wearText = "T-shirt";
     jacketKey = "sun";
     jacketText = "❌ No";
+  }
+
+  // Surface the feels-like gap when it's meaningfully colder/warmer than the
+  // raw temperature — explains why the outfit might look "over/under-dressed".
+  if (isFinite(realMin) && isFinite(minTemp) && Math.abs(minTemp - realMin) >= 2) {
+    notes.push(`🌡️ feels like ${Math.round(minTemp)}° (actual ${Math.round(realMin)}°)`);
   }
 
   if (wind >= 30) {
@@ -727,7 +742,7 @@ async function toggleReminder() {
   const line = chosen.legs[0] ? chosen.legs[0].line : "walk";
   const board = fmtTime(new Date(effBoardMs(chosen)).toISOString());
   const label = `Leave ${selectedDirection === "office" ? "home" : "office"} now — ${line} at ${board}`;
-  reminder = { dir: selectedDirection, departure: chosen.departure, leaveTs, label };
+  reminder = { dir: selectedDirection, departure: chosen.departure, leaveTs, label, line, lastDelay: chosen.legs[0] ? chosen.legs[0].delayMin : 0 };
   localStorage.setItem("leave_reminder", JSON.stringify(reminder));
   await scheduleReminder(reminder);
   updateLeaveBy();
@@ -758,13 +773,65 @@ async function scheduleReminder(r) {
 
 // Show a notification immediately. Prefer the SW registration (the only path
 // iOS supports); fall back to the Notification constructor elsewhere.
-async function fireNow(r) {
+async function notify(title, body, tag) {
   if (!canNotify || Notification.permission !== "granted") return;
   try {
     const reg = await navigator.serviceWorker.ready;
-    await reg.showNotification("Time to leave 🚇", { body: r.label, icon: "icon-192.png", badge: "icon-192.png", tag: "leave-reminder", requireInteraction: true });
+    await reg.showNotification(title, { body, icon: "icon-192.png", badge: "icon-192.png", tag: tag || "planner", requireInteraction: true });
   } catch (e) {
-    try { new Notification("Time to leave 🚇", { body: r.label, icon: "icon-192.png", tag: "leave-reminder" }); } catch (_) {}
+    try { new Notification(title, { body, icon: "icon-192.png", tag }); } catch (_) {}
+  }
+}
+function fireNow(r) { notify("Time to leave 🚇", r.label, "leave-reminder"); }
+
+// Point an armed reminder at a different departure (e.g. after a cancellation).
+function repointReminder(s) {
+  const line = s.legs[0] ? s.legs[0].line : "walk";
+  userPick = { dir: selectedDirection, departure: s.departure };
+  localStorage.setItem("user_pick", JSON.stringify(userPick));
+  reminder = {
+    dir: selectedDirection, departure: s.departure, leaveTs: effDepartureMs(s),
+    lastDelay: s.legs[0] ? s.legs[0].delayMin : 0, line,
+    label: `Leave ${selectedDirection === "office" ? "home" : "office"} now — ${line} at ${fmtTime(new Date(effBoardMs(s)).toISOString())}`,
+  };
+  localStorage.setItem("leave_reminder", JSON.stringify(reminder));
+  scheduleReminder(reminder);
+}
+
+// While a reminder is armed, watch the chosen train: alert + re-aim if it gets
+// cancelled, or shift the leave time (and alert) when it's newly delayed.
+function checkDisruption() {
+  if (!reminder || reminder.dir !== selectedDirection) return;
+  const summaries = routeCache[selectedDirection];
+  if (!summaries || !summaries.length) return;
+  const now = new Date();
+  const s = summaries.find((x) => x.departure === reminder.departure);
+
+  if (!s || routeCancelled(s)) {
+    const next = pickChosen(summaries, now);
+    if (next && !routeCancelled(next) && next.departure !== reminder.departure) {
+      const oldLine = reminder.line || "Your train";
+      const nextLine = next.legs[0] ? next.legs[0].line : "next";
+      const board = fmtTime(new Date(effBoardMs(next)).toISOString());
+      const leave = fmtTime(new Date(effDepartureMs(next)).toISOString());
+      repointReminder(next);
+      notify("Train cancelled ⚠️", `${oldLine} cancelled — now ${nextLine} at ${board}, leave ${leave}`, "leave-reminder");
+    }
+    return;
+  }
+
+  const delay = s.legs[0] ? s.legs[0].delayMin : 0;
+  const newLeave = effDepartureMs(s);
+  if (Math.abs(newLeave - reminder.leaveTs) > 60000) {
+    const wasDelay = reminder.lastDelay || 0;
+    reminder.leaveTs = newLeave;
+    reminder.lastDelay = delay;
+    reminder.line = s.legs[0] ? s.legs[0].line : reminder.line;
+    localStorage.setItem("leave_reminder", JSON.stringify(reminder));
+    scheduleReminder(reminder);
+    if (delay >= CONFIG.disruptionDelayMin && delay > wasDelay) {
+      notify("Running late ⏱️", `${reminder.line} ${delay} min late — leave at ${fmtTime(new Date(newLeave).toISOString())} instead`, "leave-reminder");
+    }
   }
 }
 
@@ -906,6 +973,9 @@ function updateLeaveBy() {
   }
   card.style.display = "block";
   const now = new Date();
+
+  // If a reminder's armed, react to cancellations/delays before we render.
+  checkDisruption();
 
   const origin = selectedDirection === "office" ? "home" : "office";
   document.getElementById("leaveByTitle").textContent =
