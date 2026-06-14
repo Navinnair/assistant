@@ -1177,10 +1177,11 @@ if ("IntersectionObserver" in window) {
 
     const dx = e.changedTouches[0].clientX - startX;
     const dy = startY == null ? 0 : e.changedTouches[0].clientY - startY;
-    // Horizontal swipe (clearly sideways) flips direction: left → Office, right → Home.
+    // Horizontal swipe matches the toggle order (To Work left, Going Home right):
+    // swipe left → Going Home, swipe right → To Work.
     if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy) * 1.5) {
       lastSwipeAt = Date.now(); // suppress the route tap that may follow
-      selectDirection(dx < 0 ? "office" : "home");
+      selectDirection(dx < 0 ? "home" : "office");
     }
     startY = null;
   });
