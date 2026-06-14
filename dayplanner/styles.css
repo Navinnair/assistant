@@ -187,7 +187,18 @@
   .route:last-child { margin-bottom: 0; }
   .route { cursor: pointer; transition: background 0.15s ease; }
   .route:hover, .route:focus-visible { background: var(--card); outline: none; }
-  .route-ext { float: right; color: var(--muted); font-size: 0.85rem; opacity: 0.6; }
+  .route-ext {
+    float: right;
+    color: var(--accent);
+    font-size: 1rem;
+    opacity: 0.85;
+    cursor: pointer;
+    padding: 2px 6px;
+    margin: -2px -4px 0 0;
+    border-radius: var(--md-shape-sm);
+    line-height: 1;
+  }
+  .route-ext:hover { opacity: 1; background: color-mix(in srgb, var(--md-primary) 12%, transparent); }
   /* The departure the Time-to-Go card picked. */
   .route.chosen {
     border-left-color: var(--accent);
@@ -490,6 +501,35 @@
     font-size: 0.8rem;
     margin-top: 8px;
   }
+  .leave-controls {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 12px;
+  }
+  .leave-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+    padding: 8px 16px;
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    border-radius: var(--md-shape-full);
+    background: rgba(0,0,0,0.18);
+    color: var(--on-primary-container);
+    font: var(--md-label-large);
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+  }
+  :root[data-theme="light"] .leave-btn { background: rgba(255,255,255,0.55); }
+  .leave-btn:hover { background: rgba(0,0,0,0.28); }
+  :root[data-theme="light"] .leave-btn:hover { background: rgba(255,255,255,0.8); }
+  .leave-btn.on {
+    background: var(--accent);
+    color: var(--on-accent);
+    border-color: var(--accent);
+  }
+  .leave-btn.ghost { border-style: dashed; }
   .route-warning {
     color: var(--status-warn);
     font-size: 0.8rem;

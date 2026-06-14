@@ -1,6 +1,6 @@
 // Build version — keep in sync with the SW cache (my-planner-vN). Shown in the
 // footer so it's easy to confirm you're on the latest code.
-const APP_VERSION = "v19";
+const APP_VERSION = "v20";
 
 // --- Single place to tweak everything ---
 const CONFIG = {
@@ -576,8 +576,8 @@ function renderRoutes(elementId, summaries, count) {
       ? '<span class="delay-tag cancel">cancelled</span>'
       : delayM > 0 ? `<span class="delay-tag">+${delayM} late</span>` : "";
     return `
-      <div class="route" data-departure="${s.departure}" data-delay="${delayM}" onclick="openRoute()" onkeydown="if(event.key==='Enter')openRoute()" role="link" tabindex="0" title="Open in Google Maps">
-        <div class="route-time"><span class="route-num"></span>${fmtTime(s.departure)} → ${fmtTime(s.arrival)} (${fmtDuration(s.durationMs)})${delayTag}<span class="route-rel"></span><span class="route-ext">↗</span></div>
+      <div class="route" data-departure="${s.departure}" data-delay="${delayM}" onclick="selectRoute('${s.departure}')" onkeydown="if(event.key==='Enter')selectRoute('${s.departure}')" role="button" tabindex="0" title="Pick this departure for Time to Go">
+        <div class="route-time"><span class="route-num"></span>${fmtTime(s.departure)} → ${fmtTime(s.arrival)} (${fmtDuration(s.durationMs)})${delayTag}<span class="route-rel"></span><span class="route-ext" role="button" tabindex="0" title="Open in Google Maps" aria-label="Open in Google Maps" onclick="event.stopPropagation();openRoute()" onkeydown="if(event.key==='Enter'){event.stopPropagation();openRoute()}">↗</span></div>
         ${alertHtml}
         ${walkHtml}
         ${legsHtml}
@@ -605,7 +605,7 @@ function refreshRouteLive() {
   const summaries = routeCache[selectedDirection];
   const now = new Date();
   const live = selectedDay === 0 && summaries && summaries.length;
-  const chosenDep = live ? pickChosen(summaries, now).departure : null;
+  const chosenDep = live ? chosenSummary(summaries, now).departure : null;
 
   let visibleNum = 0;
   let chosenMarked = false; // only the first row at the chosen time is highlighted
@@ -661,6 +661,112 @@ let selectedDirection = initialDirection(); // "home" or "office" — master tog
 let visibleCount = 5;
 let routeCache = { home: null, office: null };
 let enriched = { home: false, office: false }; // live delays applied this load?
+
+// --- User-picked departure + leave reminder (today only) ---
+// userPick overrides the auto-pickChosen for the Time-to-Go card.
+let userPick = JSON.parse(localStorage.getItem("user_pick") || "null");      // {dir, departure}
+let reminder = JSON.parse(localStorage.getItem("leave_reminder") || "null"); // {dir, departure, leaveTs, label}
+let reminderTimer = null;
+const canNotify = "Notification" in window;
+
+// The departure the Time-to-Go card should use: the user's pick (while still
+// catchable) wins; otherwise the automatic choice.
+function chosenSummary(summaries, now) {
+  if (userPick && userPick.dir === selectedDirection) {
+    const m = summaries.find((s) => s.departure === userPick.departure);
+    if (m && effDepartureMs(m) > now.getTime() - 60000) return m;
+  }
+  return pickChosen(summaries, now);
+}
+
+// Tapping a route row picks it for the Time-to-Go card (↗ opens the map).
+function selectRoute(departure) {
+  if (Date.now() - lastSwipeAt < 400) return; // ignore tap left by a swipe
+  userPick = { dir: selectedDirection, departure };
+  localStorage.setItem("user_pick", JSON.stringify(userPick));
+  if (reminder && reminder.departure !== departure) clearReminder();
+  updateLeaveBy();
+  refreshRouteLive();
+  document.getElementById("leaveByCard").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// Back to the automatic pick; drops any armed reminder.
+function resetChosen() {
+  userPick = null;
+  localStorage.removeItem("user_pick");
+  clearReminder();
+  updateLeaveBy();
+  refreshRouteLive();
+}
+
+function clearReminder() {
+  reminder = null;
+  localStorage.removeItem("leave_reminder");
+  clearTimeout(reminderTimer);
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.getRegistration().then((reg) => {
+      if (reg && reg.getNotifications) {
+        reg.getNotifications({ tag: "leave-reminder", includeTriggered: true })
+          .then((ns) => ns.forEach((n) => n.close())).catch(() => {});
+      }
+    });
+  }
+}
+
+// Arm/disarm a "time to leave" notification for the chosen departure.
+async function toggleReminder() {
+  if (reminder) { clearReminder(); updateLeaveBy(); return; }
+  const summaries = routeCache[selectedDirection];
+  if (!summaries || !summaries.length) return;
+  const chosen = chosenSummary(summaries, new Date());
+  const leaveTs = effDepartureMs(chosen);
+  if (leaveTs <= Date.now()) { alert("That departure's leave time has already passed."); return; }
+  let perm = Notification.permission;
+  if (perm === "default") perm = await Notification.requestPermission();
+  if (perm !== "granted") { alert("Allow notifications for this site to get a leave reminder."); return; }
+  const line = chosen.legs[0] ? chosen.legs[0].line : "walk";
+  const board = fmtTime(new Date(effBoardMs(chosen)).toISOString());
+  const label = `Leave ${selectedDirection === "office" ? "home" : "office"} now — ${line} at ${board}`;
+  reminder = { dir: selectedDirection, departure: chosen.departure, leaveTs, label };
+  localStorage.setItem("leave_reminder", JSON.stringify(reminder));
+  await scheduleReminder(reminder);
+  updateLeaveBy();
+}
+
+// Schedule the notification. Notification Triggers fire even when the app is
+// closed (Android/Chrome); elsewhere (iOS) fall back to a timer while alive.
+async function scheduleReminder(r) {
+  clearTimeout(reminderTimer);
+  let triggered = false;
+  if ("serviceWorker" in navigator && "showTrigger" in Notification.prototype && "TimestampTrigger" in window) {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification("Time to leave 🚇", {
+        body: r.label, tag: "leave-reminder", icon: "icon-192.png", badge: "icon-192.png",
+        requireInteraction: true, showTrigger: new TimestampTrigger(r.leaveTs),
+      });
+      triggered = true;
+    } catch (e) { triggered = false; }
+  }
+  if (!triggered) {
+    const ms = r.leaveTs - Date.now();
+    if (ms > 0 && ms < 0x7fffffff) {
+      reminderTimer = setTimeout(() => { fireNow(r); clearReminder(); }, ms);
+    }
+  }
+}
+
+// Show a notification immediately. Prefer the SW registration (the only path
+// iOS supports); fall back to the Notification constructor elsewhere.
+async function fireNow(r) {
+  if (!canNotify || Notification.permission !== "granted") return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification("Time to leave 🚇", { body: r.label, icon: "icon-192.png", badge: "icon-192.png", tag: "leave-reminder", requireInteraction: true });
+  } catch (e) {
+    try { new Notification("Time to leave 🚇", { body: r.label, icon: "icon-192.png", tag: "leave-reminder" }); } catch (_) {}
+  }
+}
 
 // Toggle a segmented button's active state + its aria-pressed.
 function setToggle(id, on) {
@@ -805,7 +911,7 @@ function updateLeaveBy() {
   document.getElementById("leaveByTitle").textContent =
     selectedDirection === "office" ? "Time to Go — To Office" : "Time to Go — To Home";
 
-  const chosen = pickChosen(summaries, now);
+  const chosen = chosenSummary(summaries, now);
 
   // Effective (live, delay-shifted) times: leaving and the train departure.
   const leaveTime = new Date(effDepartureMs(chosen));
@@ -834,6 +940,7 @@ function updateLeaveBy() {
 
   const [leaveText, leaveLevel] = leaveCountdownText(leaveDiff);
   const [departText, departLevel] = countdownText(departDiff);
+  const reminderArmed = !!reminder && reminder.dir === selectedDirection && reminder.departure === chosen.departure;
 
   const el = document.getElementById("leaveBy");
   el.innerHTML = `
@@ -849,7 +956,11 @@ function updateLeaveBy() {
         <div class="leave-countdown ${departLevel}">${departText}</div>
       </div>
     </div>
-    <div class="leave-sub">${chosen.walk ? `${chosen.walk.minutes} min walk to ${chosen.walk.dest}` : "no walk needed"}</div>
+    <div class="leave-sub">${chosen.walk ? `${chosen.walk.minutes} min walk to ${chosen.walk.dest}` : "no walk needed"}${userPick && userPick.dir === selectedDirection ? " · your pick" : ""}</div>
+    <div class="leave-controls">
+      ${canNotify ? `<button class="leave-btn ${reminderArmed ? "on" : ""}" onclick="toggleReminder()">${reminderArmed ? "🔔 Reminder on" : "🔕 Remind me"}</button>` : ""}
+      ${userPick && userPick.dir === selectedDirection ? `<button class="leave-btn ghost" onclick="resetChosen()">↺ Default</button>` : ""}
+    </div>
   `;
   flashIn(el);
 
@@ -1204,6 +1315,11 @@ async function loadAllInner() {
 setToggle("btnDirHome", selectedDirection === "home");
 setToggle("btnDirOffice", selectedDirection === "office");
 updateDayStepper(selectedDay);
+// Re-arm a saved reminder, or drop it if its leave time has already passed.
+if (reminder) {
+  if (reminder.leaveTs <= Date.now()) clearReminder();
+  else scheduleReminder(reminder);
+}
 document.getElementById("routesTitle").textContent = routesTitleFor(selectedDirection, selectedDay);
 
 loadAll();

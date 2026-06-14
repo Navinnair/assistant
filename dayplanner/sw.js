@@ -1,5 +1,5 @@
 // Bump this version on each deploy to refresh the cached app shell.
-const CACHE = "my-planner-v19";
+const CACHE = "my-planner-v20";
 const ASSETS = [
   "./",
   "./index.html",
@@ -21,6 +21,17 @@ self.addEventListener("install", (e) => {
 // Belt-and-suspenders: the page can also ask us to activate.
 self.addEventListener("message", (e) => {
   if (e.data === "SKIP_WAITING") self.skipWaiting();
+});
+
+// Tapping a leave reminder focuses the planner (or opens it).
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((cs) => {
+      for (const c of cs) { if ("focus" in c) return c.focus(); }
+      if (self.clients.openWindow) return self.clients.openWindow("./");
+    })
+  );
 });
 
 self.addEventListener("activate", (e) => {
