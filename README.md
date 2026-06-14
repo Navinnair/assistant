@@ -77,3 +77,7 @@ walk/prep buffers, and refresh cadence to fit your own commute.
 ---
 
 Built for fun and daily use. PRs and ideas welcome. 🙂
+
+> 🤖 Vibe-coded with [Claude](https://claude.ai) — I supplied the vibes and the
+> commute, Claude supplied the semicolons. No commits were harmed; several were
+> force-pushed in the making of this app.
