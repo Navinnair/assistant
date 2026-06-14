@@ -72,7 +72,38 @@
     transition: transform 0.15s ease, background 0.2s ease;
   }
   .theme-toggle:active { transform: scale(0.92); }
-  .subtitle { color: var(--muted); font-size: 0.875rem; margin-bottom: 16px; }
+  .subtitle { color: var(--muted); font-size: 0.875rem; margin-bottom: 8px; }
+  .weather-strip {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .weather-strip.loading { color: var(--muted); }
+  .weather-strip .ws-icon { display: inline-flex; align-items: center; }
+  .weather-strip .ws-temp { color: var(--text); font-weight: 700; }
+  .weather-strip .ws-sep { opacity: 0.4; }
+  .hourly-strip {
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
+    overflow-x: auto;
+  }
+  .hour-col {
+    flex: 1;
+    min-width: 42px;
+    text-align: center;
+    padding: 8px 2px;
+    border-radius: 12px;
+    background: var(--card-high);
+  }
+  .hour-time { font-size: 0.7rem; color: var(--muted); margin-bottom: 4px; }
+  .hour-icon { display: flex; justify-content: center; margin-bottom: 2px; }
+  .hour-temp { font-size: 0.9rem; font-weight: 700; }
+  .hour-rain { font-size: 0.62rem; color: var(--accent); margin-top: 3px; white-space: nowrap; }
   .card {
     background: var(--card);
     border: 1px solid var(--outline);
@@ -92,21 +123,6 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
   }
-  .weather-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  .weather-col {
-    text-align: center;
-    padding: 12px 8px;
-    border-radius: 16px;
-    background: var(--card-high);
-  }
-  .weather-icon { margin: 0 auto 4px; }
-  .weather-day { font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; }
-  .weather-detail { color: var(--muted); font-size: 0.78rem; margin-top: 4px; }
-  .big-temp { font-size: 1.4rem; font-weight: 800; margin-top: 2px; }
   .outfit-sections {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -157,8 +173,15 @@
     line-height: 1.4;
   }
   .route-line {
-    color: var(--accent);
+    display: inline-block;
+    color: #fff;
     font-weight: 700;
+    font-size: 0.78rem;
+    line-height: 1;
+    padding: 3px 7px;
+    border-radius: 6px;
+    min-width: 18px;
+    text-align: center;
   }
   .route-station {
     color: var(--text);
@@ -299,6 +322,7 @@
     </div>
   </div>
   <div class="subtitle" id="dateLine"></div>
+  <div class="weather-strip loading" id="weatherStrip">Loading...</div>
 
   <div class="day-toggle">
     <button id="btnToday" class="active" onclick="selectDay(0)">Today</button>
@@ -316,7 +340,7 @@
   </div>
 
   <div class="card">
-    <h2>Weather</h2>
+    <h2>Hourly Forecast</h2>
     <div id="weather" class="loading">Loading...</div>
   </div>
 
@@ -386,8 +410,32 @@ const WEATHER_ICONS = {
   storm: `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 12a3.5 3.5 0 0 0 0-7 5.5 5.5 0 0 0-10.6 1.5A3.5 3.5 0 0 0 7.5 12h10z"/><path d="M13 11l-3 4h3l-2 4" stroke="#f5a623"/></svg>`,
 };
 
-function weatherIcon(category) {
-  return WEATHER_ICONS[category] || WEATHER_ICONS.cloud;
+function weatherIcon(category, size) {
+  let svg = WEATHER_ICONS[category] || WEATHER_ICONS.cloud;
+  if (size) svg = svg.replace(/width="40" height="40"/, `width="${size}" height="${size}"`);
+  return svg;
+}
+
+// Hourly entries for the given day, starting from "now" (today) or 8am
+// (tomorrow), at a fixed step, capped to waking hours.
+function hourlyEntries(data, dayIdx, count, stepH) {
+  const targetDate = data.daily.time[dayIdx];
+  const startHour = dayIdx === 0 ? new Date().getHours() : 8;
+  const entries = [];
+  for (let i = 0; i < data.hourly.time.length && entries.length < count; i++) {
+    const [date, time] = data.hourly.time[i].split("T");
+    if (date !== targetDate) continue;
+    const hour = parseInt(time.split(":")[0], 10);
+    if (hour < startHour || hour > 22) continue;
+    if ((hour - startHour) % stepH !== 0) continue;
+    entries.push({
+      hour,
+      temp: Math.round(data.hourly.temperature_2m[i]),
+      rain: data.hourly.precipitation_probability[i],
+      category: weatherInfo(data.hourly.weathercode[i])[1],
+    });
+  }
+  return entries;
 }
 
 function flashIn(el) {
@@ -501,25 +549,37 @@ function daytimeMaxWind(data, dayIdx) {
 }
 
 function renderWeather(data, dayIdx) {
-  const days = ["Today", "Tomorrow"];
   const i = dayIdx || 0;
   const [label, category] = weatherInfo(data.daily.weathercode[i]);
   const max = Math.round(data.daily.temperature_2m_max[i]);
   const min = Math.round(data.daily.temperature_2m_min[i]);
   const rain = data.daily.precipitation_probability_max[i];
   const wind = Math.round(data.daily.windspeed_10m_max[i]);
-  const html = `
-    <div class="weather-grid">
-      <div class="weather-col">
-        <div class="weather-day">${days[i]}</div>
-        <div class="weather-icon">${weatherIcon(category)}</div>
-        <div class="big-temp">${min}° / ${max}°</div>
-        <div class="weather-detail">${label}</div>
-        <div class="weather-detail">🌧️ ${rain}% · 💨 ${wind} km/h</div>
-      </div>
-    </div>`;
+
+  // One-line glance strip under the header.
+  const strip = document.getElementById("weatherStrip");
+  strip.classList.remove("loading");
+  strip.innerHTML = `
+    <span class="ws-icon">${weatherIcon(category, 22)}</span>
+    <span class="ws-temp">${min}° / ${max}°</span>
+    <span class="ws-sep">·</span>
+    <span>${label}</span>
+    <span class="ws-sep">·</span>
+    <span>🌧️ ${rain}%</span>
+    <span>💨 ${wind} km/h</span>
+  `;
+
+  // Hourly forecast card.
+  const entries = hourlyEntries(data, i, 7, 2);
+  const hourlyHtml = entries.map(e => `
+    <div class="hour-col">
+      <div class="hour-time">${e.hour}h</div>
+      <div class="hour-icon">${weatherIcon(e.category, 24)}</div>
+      <div class="hour-temp">${e.temp}°</div>
+      <div class="hour-rain">🌧️ ${e.rain}%</div>
+    </div>`).join("");
   const el = document.getElementById("weather");
-  el.innerHTML = html;
+  el.innerHTML = `<div class="hourly-strip">${hourlyHtml || '<div class="loading">No hourly data</div>'}</div>`;
   flashIn(el);
   return data;
 }
@@ -600,6 +660,7 @@ function summarizeRoute(route) {
     .filter(p => p.line && p.line.transportType !== "PEDESTRIAN")
     .map(p => ({
       line: p.line.label,
+      transportType: p.line.transportType,
       direction: p.line.destination,
       board: p.from.name,
       alight: p.to.name,
@@ -614,6 +675,22 @@ function summarizeRoute(route) {
   return { departure, arrival, durationMs, legs };
 }
 
+// Official MVG line colors. Keyed by exact line label; fall back to a
+// per-transport-type default for anything not listed (e.g. bus numbers).
+const LINE_COLORS = {
+  U1: "#438136", U2: "#C40C37", U3: "#ED6720", U4: "#00A984",
+  U5: "#BC7A00", U6: "#0065AE", U7: "#C40C37", U8: "#ED6720",
+  S1: "#16BAE7", S2: "#76B82A", S3: "#951B81", S4: "#E30613",
+  S6: "#00975F", S7: "#943126", S8: "#000000", S20: "#ED6720",
+};
+const TYPE_COLORS = {
+  UBAHN: "#0065AE", SBAHN: "#00975F", TRAM: "#E2001A",
+  BUS: "#00586A", REGIONAL_BUS: "#00586A", BAHN: "#5b6770",
+};
+function lineColor(line, type) {
+  return LINE_COLORS[line] || TYPE_COLORS[type] || "#5b6770";
+}
+
 function renderRoutes(elementId, summaries, count) {
   if (!summaries.length) {
     document.getElementById(elementId).innerHTML = `<div class="loading">No routes found</div>`;
@@ -624,7 +701,7 @@ function renderRoutes(elementId, summaries, count) {
     const legsHtml = s.legs.length
       ? s.legs.map(l => `
           <div class="route-leg">
-            <span class="route-line">${l.line}</span> → ${l.direction}
+            <span class="route-line" style="background:${lineColor(l.line, l.transportType)}">${l.line}</span> → ${l.direction}
             ${l.realTime ? '<span class="route-livetag">● live</span>' : ""}<br>
             <span class="route-station">${fmtTime(l.boardTime)} ${l.board}</span> →
             <span class="route-station">${fmtTime(l.alightTime)} ${l.alight}</span>
