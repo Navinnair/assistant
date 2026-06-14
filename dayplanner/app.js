@@ -385,6 +385,19 @@ function pickChosen(summaries, now) {
   return chosen;
 }
 
+// Shimmer placeholders shown while data loads.
+const SKELETON = {
+  routes: '<div class="skeleton skel-row"></div>'.repeat(4),
+  outfit: '<div class="skel-grid3">' + '<div class="skeleton skel-tile"></div>'.repeat(3) + "</div>",
+  weather: '<div class="skel-strip">' + '<div class="skeleton"></div>'.repeat(5) + "</div>",
+};
+
+function showRoutesError() {
+  document.getElementById("routesList").innerHTML =
+    '<div class="loading">Couldn\'t load routes.<button class="retry-btn" onclick="loadRoutes(selectedDay)">Retry</button></div>';
+  document.getElementById("showMoreBtn").style.display = "none";
+}
+
 function renderRoutes(elementId, summaries, count) {
   if (!summaries.length) {
     document.getElementById(elementId).innerHTML = `<div class="loading">No routes found</div>`;
@@ -412,7 +425,7 @@ function renderRoutes(elementId, summaries, count) {
       : "";
     return `
       <div class="route" data-departure="${s.departure}">
-        <div class="route-time">${fmtTime(s.departure)} → ${fmtTime(s.arrival)} (${fmtDuration(s.durationMs)})<span class="route-rel"></span></div>
+        <div class="route-time"><span class="route-num"></span>${fmtTime(s.departure)} → ${fmtTime(s.arrival)} (${fmtDuration(s.durationMs)})<span class="route-rel"></span></div>
         ${alertHtml}
         ${walkHtml}
         ${legsHtml}
@@ -441,9 +454,12 @@ function refreshRouteLive() {
   const live = selectedDay === 0 && summaries && summaries.length;
   const chosenDep = live ? pickChosen(summaries, now).departure : null;
 
+  let visibleNum = 0;
+  let chosenMarked = false; // only the first row at the chosen time is highlighted
   rows.forEach((row) => {
     const dep = row.getAttribute("data-departure");
     const rel = row.querySelector(".route-rel");
+    const num = row.querySelector(".route-num");
     if (live && dep) {
       const diffExact = (new Date(dep) - now) / 60000;
       const diff = Math.round(diffExact);
@@ -451,6 +467,7 @@ function refreshRouteLive() {
       if (diffExact < 0) {
         row.style.display = "none";
         row.classList.remove("chosen");
+        if (num) num.textContent = "";
         return;
       }
       row.style.display = "";
@@ -458,12 +475,15 @@ function refreshRouteLive() {
         if (diff === 0) { rel.textContent = " · now"; rel.className = "route-rel " + leaveTier(0); }
         else { rel.textContent = ` · in ${diff} min`; rel.className = "route-rel " + leaveTier(diff); }
       }
-      row.classList.toggle("chosen", dep === chosenDep);
+      const isChosen = !chosenMarked && dep === chosenDep;
+      if (isChosen) chosenMarked = true;
+      row.classList.toggle("chosen", isChosen);
     } else {
       row.style.display = "";
       if (rel) { rel.textContent = ""; rel.className = "route-rel"; }
       row.classList.remove("chosen");
     }
+    if (num) num.textContent = ++visibleNum;
   });
 }
 
@@ -506,7 +526,7 @@ function selectDirection(direction) {
   if (cached) {
     renderRoutes("routesList", cached, visibleCount);
   } else {
-    document.getElementById("routesList").innerHTML = '<div class="loading">Loading...</div>';
+    document.getElementById("routesList").innerHTML = SKELETON.routes;
     document.getElementById("showMoreBtn").style.display = "none";
   }
   updateLeaveBy();
@@ -633,7 +653,7 @@ async function loadRoutes(dayIdx) {
     renderStaleNote();
   } else {
     updateLeaveBy();
-    document.getElementById("routesList").innerHTML = '<div class="loading">Loading...</div>';
+    document.getElementById("routesList").innerHTML = SKELETON.routes;
     document.getElementById("showMoreBtn").style.display = "none";
   }
 
@@ -651,7 +671,7 @@ async function loadRoutes(dayIdx) {
     } catch (e) {
       // Keep any cached rows on screen; only show failure if we have nothing.
       if (selectedDirection === dir && !routeCache[dir]) {
-        document.getElementById("routesList").innerHTML = `<div class="loading">Failed to load routes</div>`;
+        showRoutesError();
       }
     }
   };
@@ -734,8 +754,8 @@ async function loadAll() {
     renderWeather(weatherData, selectedDay);
     renderOutfit(weatherData, selectedDay);
   } else {
-    document.getElementById("outfit").innerHTML = '<div class="loading">Loading...</div>';
-    document.getElementById("weather").innerHTML = '<div class="loading">Loading...</div>';
+    document.getElementById("outfit").innerHTML = SKELETON.outfit;
+    document.getElementById("weather").innerHTML = SKELETON.weather;
   }
 
   try {
@@ -745,8 +765,9 @@ async function loadAll() {
     renderOutfit(weatherData, selectedDay);
   } catch (e) {
     if (!cached) {
-      document.getElementById("weather").innerHTML = `<div class="loading">Failed to load weather</div>`;
-      document.getElementById("outfit").innerHTML = `<div class="loading">Failed to load</div>`;
+      document.getElementById("weather").innerHTML =
+        '<div class="loading">Couldn\'t load weather.<button class="retry-btn" onclick="loadAll()">Retry</button></div>';
+      document.getElementById("outfit").innerHTML = `<div class="loading">—</div>`;
     }
   }
 

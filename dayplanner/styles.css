@@ -183,6 +183,21 @@
     color: #ba1a1a;
     background: rgba(186,26,26,0.08);
   }
+  .route-num {
+    display: inline-block;
+    min-width: 18px;
+    height: 18px;
+    line-height: 18px;
+    text-align: center;
+    margin-right: 8px;
+    border-radius: 50%;
+    background: var(--outline);
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    vertical-align: 1px;
+  }
+  .route.chosen .route-num { background: var(--accent); color: var(--on-accent); }
   .route-rel { font-weight: 600; font-size: 0.85rem; }
   .route-rel.urgent { color: #ffb4ab; }
   .route-rel.soon { color: #ffd479; }
@@ -311,6 +326,30 @@
     margin-left: 4px;
   }
   .loading { color: var(--muted); font-size: 0.9rem; }
+  .retry-btn {
+    margin-left: 8px;
+    padding: 4px 12px;
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--accent);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  /* Skeleton shimmer placeholders */
+  @keyframes shimmer { 0% { background-position: -240px 0; } 100% { background-position: 240px 0; } }
+  .skeleton {
+    background: linear-gradient(90deg, var(--card-high) 25%, var(--outline) 37%, var(--card-high) 63%);
+    background-size: 480px 100%;
+    animation: shimmer 1.2s infinite linear;
+    border-radius: 8px;
+  }
+  .skel-row { height: 62px; border-radius: 12px; margin-bottom: 8px; }
+  .skel-grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .skel-tile { height: 92px; border-radius: 16px; }
+  .skel-strip { display: flex; gap: 4px; }
+  .skel-strip > div { flex: 1; height: 86px; border-radius: 12px; }
   .updated { text-align: center; color: var(--muted); font-size: 0.75rem; margin-top: 8px; }
   .updated.stale { color: #ffb454; }
   .day-toggle {
