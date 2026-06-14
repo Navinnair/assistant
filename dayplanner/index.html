@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Day Planner</title>
+<title>Office Planner</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -106,16 +106,15 @@
   .weather-icon { margin: 0 auto 4px; }
   .weather-day { font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; }
   .weather-detail { color: var(--muted); font-size: 0.78rem; margin-top: 4px; }
-  .weather-umbrella { font-size: 0.8rem; font-weight: 600; margin-top: 6px; }
   .big-temp { font-size: 1.4rem; font-weight: 800; margin-top: 2px; }
   .outfit-sections {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
   }
   .outfit-section {
     text-align: center;
-    padding: 12px 8px;
+    padding: 10px 4px;
     border-radius: 16px;
     background: var(--card-high);
   }
@@ -127,8 +126,8 @@
     color: var(--muted);
     margin-bottom: 6px;
   }
-  .outfit-icon { font-size: 2.6rem; text-align: center; margin-bottom: 6px; }
-  .outfit-text { text-align: center; font-size: 1.05rem; font-weight: 700; }
+  .outfit-icon { font-size: 2.2rem; text-align: center; margin-bottom: 6px; }
+  .outfit-text { text-align: center; font-size: 0.95rem; font-weight: 700; }
   .outfit-notes { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 10px; }
   .route {
     border-left: 4px solid var(--accent);
@@ -293,7 +292,7 @@
 </head>
 <body>
   <div class="header-row">
-    <h1>Morning Briefing</h1>
+    <h1>Office Planner</h1>
     <div class="header-actions">
       <button class="theme-toggle" onclick="loadAll()" title="Refresh">🔄</button>
       <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙</button>
@@ -509,8 +508,6 @@ function renderWeather(data, dayIdx) {
   const min = Math.round(data.daily.temperature_2m_min[i]);
   const rain = data.daily.precipitation_probability_max[i];
   const wind = Math.round(data.daily.windspeed_10m_max[i]);
-  const daytimeRain = daytimeRainChance(data, i);
-  const umbrella = daytimeRain >= 30 ? "☔ Umbrella: Yes" : "🚫☔ Umbrella: No";
   const html = `
     <div class="weather-grid">
       <div class="weather-col">
@@ -519,7 +516,6 @@ function renderWeather(data, dayIdx) {
         <div class="big-temp">${min}° / ${max}°</div>
         <div class="weather-detail">${label}</div>
         <div class="weather-detail">🌧️ ${rain}% · 💨 ${wind} km/h</div>
-        <div class="weather-umbrella">${umbrella}</div>
       </div>
     </div>`;
   const el = document.getElementById("weather");
@@ -555,20 +551,21 @@ function renderOutfit(data, dayIdx) {
     wearIcon = "👕";
     wearText = "T-shirt or light top";
     jacketIcon = "🧥";
-    jacketText = "No coat needed";
+    jacketText = "❌ No";
   } else {
     wearIcon = "👕";
     wearText = "T-shirt";
     jacketIcon = "☀️";
-    jacketText = "No jacket needed";
+    jacketText = "❌ No";
   }
 
-  if (rainProb >= 40) {
-    notes.push("☔ Take umbrella / rain jacket");
-  }
   if (wind >= 30) {
     notes.push("💨 Windy — windbreaker helps");
   }
+
+  const needsUmbrella = rainProb >= 30;
+  const umbrellaIcon = "☔";
+  const umbrellaText = needsUmbrella ? "Yes" : "❌ No";
 
   const el = document.getElementById("outfit");
   el.innerHTML = `
@@ -582,6 +579,11 @@ function renderOutfit(data, dayIdx) {
         <div class="outfit-icon">${jacketIcon}</div>
         <div class="outfit-label">Outerwear</div>
         <div class="outfit-text">${jacketText}</div>
+      </div>
+      <div class="outfit-section">
+        <div class="outfit-icon">${umbrellaIcon}</div>
+        <div class="outfit-label">Umbrella</div>
+        <div class="outfit-text">${umbrellaText}</div>
       </div>
     </div>
     ${notes.length ? `<div class="outfit-notes">${notes.join(" · ")}</div>` : ""}
