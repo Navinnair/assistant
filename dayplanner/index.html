@@ -172,6 +172,12 @@
     margin-top: 4px;
     line-height: 1.4;
   }
+  .route-walk {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: 4px;
+    opacity: 0.85;
+  }
   .route-line {
     display: inline-block;
     color: #fff;
@@ -652,11 +658,23 @@ function renderOutfit(data, dayIdx) {
 }
 
 function summarizeRoute(route) {
-  const departure = route.parts[0].from.plannedDeparture;
-  const arrival = route.parts[route.parts.length - 1].to.plannedDeparture;
+  const parts = route.parts;
+  // parts[0].from.plannedDeparture is when you leave the origin (the walk
+  // to the first station is part 0), i.e. the real "leave home" time.
+  const departure = parts[0].from.plannedDeparture;
+  const arrival = parts[parts.length - 1].to.plannedDeparture;
   const durationMs = new Date(arrival) - new Date(departure);
 
-  const legs = route.parts
+  // Leading walk from origin to the first station, if the route has one.
+  let walk = null;
+  if (parts[0].line && parts[0].line.transportType === "PEDESTRIAN") {
+    const mins = Math.round(
+      (new Date(parts[0].to.plannedDeparture) - new Date(parts[0].from.plannedDeparture)) / 60000
+    );
+    walk = { minutes: mins, dest: parts[0].to.name };
+  }
+
+  const legs = parts
     .filter(p => p.line && p.line.transportType !== "PEDESTRIAN")
     .map(p => ({
       line: p.line.label,
@@ -672,7 +690,7 @@ function summarizeRoute(route) {
         .filter(Boolean),
     }));
 
-  return { departure, arrival, durationMs, legs };
+  return { departure, arrival, durationMs, walk, legs };
 }
 
 // Official MVG line colors. Keyed by exact line label; fall back to a
@@ -708,9 +726,13 @@ function renderRoutes(elementId, summaries, count) {
             ${l.warnings.map(w => `<div class="route-warning">⚠️ ${w}</div>`).join("")}
           </div>`).join("")
       : `<div class="route-leg">Walk only</div>`;
+    const walkHtml = s.walk
+      ? `<div class="route-walk">🚶 ${s.walk.minutes} min walk to ${s.walk.dest}</div>`
+      : "";
     return `
       <div class="route">
         <div class="route-time">${fmtTime(s.departure)} → ${fmtTime(s.arrival)} (${fmtDuration(s.durationMs)})</div>
+        ${walkHtml}
         ${legsHtml}
       </div>`;
   }).join("");
@@ -780,8 +802,6 @@ function showMoreRoutes() {
 
 let officeSummaries = [];
 
-// Walking time from home to the first station/stop
-const WALK_TO_STATION_MIN = 7;
 // Below this many minutes-to-leave, the countdown is shown as urgent (red)
 const URGENT_THRESHOLD_MIN = 4;
 // Below this many minutes-to-leave (but above urgent), shown as soon (amber)
@@ -796,20 +816,20 @@ function updateLeaveBy() {
   card.style.display = "block";
   const now = new Date();
 
-  // "Leave home" time = departure minus the walk to the station.
-  // Pick the first option you can still realistically catch; if every
-  // option is already too tight, fall back to the last one and show "Leave now!".
+  // s.departure is the API-accurate "leave home" time (start of the walk
+  // to the station). Pick the first option you can still catch; if every
+  // option is already past, fall back to the last and show "Leave now!".
   let chosen = officeSummaries[officeSummaries.length - 1];
   for (const s of officeSummaries) {
-    const leaveTime = new Date(new Date(s.departure) - WALK_TO_STATION_MIN * 60000);
-    if (leaveTime > now) {
+    if (new Date(s.departure) > now) {
       chosen = s;
       break;
     }
   }
 
-  const leaveTime = new Date(new Date(chosen.departure) - WALK_TO_STATION_MIN * 60000);
-  const departTime = new Date(chosen.departure);
+  const leaveTime = new Date(chosen.departure);
+  // The actual transit departure = first transit leg's board time.
+  const departTime = chosen.legs[0] ? new Date(chosen.legs[0].boardTime) : leaveTime;
 
   const leaveDiff = Math.round((leaveTime - now) / 60000);
   const departDiff = Math.round((departTime - now) / 60000);
@@ -846,11 +866,11 @@ function updateLeaveBy() {
       </div>
       <div class="leave-col">
         <div class="leave-label">Departure (${chosen.legs[0] ? chosen.legs[0].line : "walk"})</div>
-        <div class="leave-clock">${fmtTime(chosen.departure)}</div>
+        <div class="leave-clock">${fmtTime(departTime.toISOString())}</div>
         <div class="leave-countdown ${departLevel}">${departText}</div>
       </div>
     </div>
-    <div class="leave-sub">${WALK_TO_STATION_MIN} min walk to station</div>
+    <div class="leave-sub">${chosen.walk ? `${chosen.walk.minutes} min walk to ${chosen.walk.dest}` : "no walk needed"}</div>
   `;
   flashIn(el);
 }
