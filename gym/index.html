@@ -2,32 +2,75 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Gym</title>
+<meta name="theme-color" content="#0a0c10">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0f1115;
-    --text: #e8e8e8;
-    --muted: #9aa0a8;
-    --accent: #4da3ff;
-  }
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
   body {
-    margin: 0;
-    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    padding: 16px;
-    max-width: 480px;
     margin: 0 auto;
+    font-family: 'Roboto', -apple-system, Segoe UI, Helvetica, Arial, sans-serif;
+    background: #0a0c10;
+    color: #e7eaf0;
+    padding: 16px;
+    max-width: 520px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    -webkit-font-smoothing: antialiased;
   }
-  a { color: var(--accent); text-decoration: none; }
-  h1 { font-size: 1.4rem; }
-  p { color: var(--muted); }
+  .header-row { display: flex; justify-content: space-between; align-items: center; }
+  h1 { font-size: 1.7rem; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+  .icon-btn {
+    background: #262d3a; border: none; border-radius: 50%;
+    width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+    color: #e7eaf0; text-decoration: none;
+  }
+  .stage {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 16px;
+    padding: 24px 0 48px;
+  }
+  .pic {
+    width: 240px; max-width: 72vw; height: auto;
+    filter: drop-shadow(0 10px 30px rgba(0,0,0,0.5));
+  }
+  .badge {
+    display: inline-block;
+    background: rgba(255,180,84,0.14);
+    color: #ffb454;
+    border: 1px solid rgba(255,180,84,0.4);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .title { font-size: 1.4rem; font-weight: 800; margin: 0; }
+  .sub { color: #8b95a5; font-size: 0.95rem; max-width: 30ch; margin: 0; }
 </style>
 </head>
 <body>
-  <p><a href="../">&larr; Back</a></p>
-  <h1>🏋️ Gym</h1>
-  <p>Coming soon.</p>
+  <header class="header-row">
+    <h1>🏋️ Gym</h1>
+    <a class="icon-btn" href="../" title="All apps" aria-label="Back to home page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></a>
+  </header>
+
+  <div class="stage">
+    <span class="badge">🚧 Under development</span>
+    <img class="pic" src="underdevelopment.webp" alt="Bundled up, ready for the cold gym" loading="lazy">
+    <h2 class="title">Gym is warming up…</h2>
+    <p class="sub">Our dev showed up dressed for the weather. Check back soon. 💪🥶</p>
+  </div>
 </body>
 </html>
