@@ -14,17 +14,7 @@
   h1 { font: var(--md-headline-small); margin: 0; letter-spacing: -0.01em; }
   .header-row { display: flex; justify-content: space-between; align-items: center; }
   .header-actions { display: flex; gap: 8px; }
-  .icon-btn {
-    background: var(--card-high);
-    border: none;
-    border-radius: 50%;
-    width: 48px; height: 48px;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; color: var(--text); text-decoration: none;
-    transition: background 0.2s ease, transform 0.15s ease;
-  }
-  .icon-btn:hover { background: var(--md-surface-container-highest); }
-  .icon-btn:active { transform: scale(0.92); }
+  /* .icon-btn is defined once in ../tokens.css */
   .subtitle { color: var(--muted); font: var(--md-body-medium); margin: 6px 0 16px; }
   .card {
     background: var(--card);
@@ -95,6 +85,39 @@
   .place-chip.active { background: var(--primary-container); color: var(--on-primary-container); border-color: var(--accent); }
 
   .status { color: var(--muted); font-size: 0.88rem; margin: 4px 0 12px; min-height: 1em; text-align: center; }
+
+  /* Skeleton shimmer placeholders while the forecast loads. */
+  @keyframes shimmer { 0% { background-position: -240px 0; } 100% { background-position: 240px 0; } }
+  .skeleton {
+    background: linear-gradient(90deg, var(--md-surface-container-high) 25%, var(--md-outline-variant) 37%, var(--md-surface-container-high) 63%);
+    background-size: 480px 100%;
+    animation: shimmer 1.2s infinite linear;
+    border-radius: var(--md-shape-lg);
+  }
+  .skel-overall { height: 150px; margin-bottom: 14px; }
+  .skel-day { height: 150px; }
+
+  /* Error state with retry. */
+  .trip-error {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.9rem;
+    padding: 16px;
+    background: var(--card);
+    border: 1px solid var(--outline);
+    border-radius: var(--md-shape-lg);
+  }
+  .retry-btn {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 6px 14px;
+    border: 1px solid var(--accent);
+    border-radius: var(--md-shape-full);
+    background: transparent;
+    color: var(--accent);
+    font: var(--md-label-large);
+    cursor: pointer;
+  }
   .trip-heading {
     font-size: 0.9rem; font-weight: 700; color: var(--text);
     margin: 4px 0 12px;

@@ -1,8 +1,9 @@
 // Bump this version on each deploy to refresh the cached app shell.
-const CACHE = "my-planner-v17";
+const CACHE = "my-planner-v19";
 const ASSETS = [
   "./",
   "./index.html",
+  "../tokens.css",
   "./styles.css",
   "./app.js",
   "./manifest.json",

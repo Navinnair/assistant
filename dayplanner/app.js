@@ -1,6 +1,6 @@
 // Build version — keep in sync with the SW cache (my-planner-vN). Shown in the
 // footer so it's easy to confirm you're on the latest code.
-const APP_VERSION = "v17";
+const APP_VERSION = "v19";
 
 // --- Single place to tweak everything ---
 const CONFIG = {
@@ -92,9 +92,12 @@ function weatherIcon(category, size) {
 
 // Outfit icons — outline SVGs matching the weather icon style.
 const OUTFIT_ICONS = {
-  shirt: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3 5 6l2 3 2-1.4V21h6V7.6L17 9l2-3-4-3a3 3 0 0 1-6 0Z"/></svg>`,
-  sweater: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3 4 7l2 6 3-2.2V21h6V10.8l3 2.2 2-6-5-4a3 3 0 0 1-6 0Z"/></svg>`,
-  coat: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3 5 6l2 4 2-1.2V21h6V8.8l2 1.2 2-4-4-3a3 3 0 0 1-6 0Z"/><path d="M12 6v15"/></svg>`,
+  // Short-sleeve tee: stubby sleeves, wide crew neck.
+  shirt: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3.5 5.5 5 3.5 8.5l3 1.8L8 9v12h8V9l1.5 1.3 3-1.8L18.5 5 15 3.5a3 3 0 0 1-6 0Z"/></svg>`,
+  // Long-sleeve pullover: full sleeves down the sides + ribbed cuffs and neck.
+  sweater: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3.5 4 5.5 2.5 16l2.8.6.7-7V21h12v-11.4l.7 7 2.8-.6L22 5.5 17 3.5a3 3 0 0 1-6 0Z"/><path d="M4 15.5h2.7M17.3 15.5H20M9.3 4.2 12 6.6l2.7-2.4"/></svg>`,
+  // Long overcoat: collar lapels, longer body, centre button placket.
+  coat: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 5 5 4 11l2.2.6V21h11.6v-9.4L20 11l-1-6-3-2-3 3-3-3Z"/><path d="M12 6.5V21M11.4 11h.01M11.4 14h.01"/></svg>`,
   umbrella: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 8 0 0 1 9 8H3a9 8 0 0 1 9-8Z"/><path d="M12 11v7a2.5 2.5 0 0 0 5 0"/><path d="M12 3V2"/></svg>`,
 };
 
@@ -652,10 +655,26 @@ function routesTitleFor(direction, dayIdx) {
     : `To Office (Lenbachpl. 3) — ${label}`;
 }
 
+// Update the compact day stepper: day name, real date, and arrow bounds.
+function updateDayStepper(dayIdx) {
+  const d = new Date();
+  d.setDate(d.getDate() + dayIdx);
+  document.getElementById("dayName").textContent = dayIdx === 0 ? "Today" : "Tomorrow";
+  document.getElementById("dayDate").textContent =
+    d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  document.getElementById("dayPrev").disabled = dayIdx === 0;
+  document.getElementById("dayNext").disabled = dayIdx === 1;
+}
+
+// Step the day within [0, 1] (today..tomorrow).
+function stepDay(delta) {
+  const next = Math.min(1, Math.max(0, selectedDay + delta));
+  if (next !== selectedDay) selectDay(next);
+}
+
 function selectDay(dayIdx) {
   selectedDay = dayIdx;
-  setToggle("btnToday", dayIdx === 0);
-  setToggle("btnTomorrow", dayIdx === 1);
+  updateDayStepper(dayIdx);
   const label = dayIdx === 0 ? "Today" : "Tomorrow";
   document.getElementById("outfitTitle").textContent = `Outfit for ${label}`;
   document.getElementById("routesTitle").textContent = routesTitleFor(selectedDirection, dayIdx);
@@ -1050,7 +1069,7 @@ function toggleTheme() {
   applyTheme(next);
 }
 
-applyTheme(localStorage.getItem("theme") || "dark");
+applyTheme(localStorage.getItem("theme") || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"));
 
 // --- Hourly forecast: collapsible under the weather strip ---
 function setHourly(open) {
@@ -1163,6 +1182,7 @@ async function loadAllInner() {
 
 setToggle("btnDirHome", selectedDirection === "home");
 setToggle("btnDirOffice", selectedDirection === "office");
+updateDayStepper(selectedDay);
 document.getElementById("routesTitle").textContent = routesTitleFor(selectedDirection, selectedDay);
 
 loadAll();

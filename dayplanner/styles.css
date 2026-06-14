@@ -24,25 +24,7 @@
     display: flex;
     gap: 8px;
   }
-  .theme-toggle {
-    background: var(--card-high);
-    border: none;
-    border-radius: 50%;
-    width: 48px;
-    height: 48px;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: var(--text);
-    transition: transform 0.15s ease, background 0.2s ease;
-  }
-  .theme-toggle:hover { background: var(--md-surface-container-highest); }
-  .theme-toggle:active { transform: scale(0.92); }
-  a.theme-toggle { text-decoration: none; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .theme-toggle.spinning svg { animation: spin 0.8s linear infinite; }
+  /* Header icon buttons use the shared .icon-btn from ../tokens.css */
   .dayoff-note {
     padding: 16px;
     margin-bottom: 12px;
@@ -74,16 +56,14 @@
   }
   .disruption-banner.warn {
     background: rgba(255,180,84,0.14);
-    color: #ffb454;
+    color: var(--status-warn);
     border: 1px solid rgba(255,180,84,0.4);
   }
   .disruption-banner.bad {
     background: rgba(255,180,171,0.14);
-    color: #ffb4ab;
+    color: var(--status-bad);
     border: 1px solid rgba(255,180,171,0.45);
   }
-  :root[data-theme="light"] .disruption-banner.warn { color: #8a5d00; }
-  :root[data-theme="light"] .disruption-banner.bad { color: #ba1a1a; }
   .pull-indicator {
     position: fixed;
     top: 8px;
@@ -228,13 +208,13 @@
     font-size: 1rem;
   }
   .stale-note {
-    color: #ffb454;
+    color: var(--status-warn);
     font-size: 0.78rem;
     font-weight: 600;
     margin-bottom: 10px;
   }
   .route-alert {
-    color: #ffb4ab;
+    color: var(--status-bad);
     background: rgba(255,180,171,0.10);
     border-radius: 8px;
     padding: 4px 8px;
@@ -243,7 +223,7 @@
     font-weight: 600;
   }
   :root[data-theme="light"] .route-alert {
-    color: #ba1a1a;
+    color: var(--status-bad);
     background: rgba(186,26,26,0.08);
   }
   .route-num {
@@ -320,31 +300,25 @@
     cursor: pointer;
   }
   .occupancy { margin-left: 6px; font-size: 0.72rem; font-weight: 700; }
-  .occ-low { color: #8bd99f; }
-  .occ-med { color: #ffd479; }
-  .occ-high { color: #ffb4ab; }
-  :root[data-theme="light"] .occ-low { color: #1e6b3a; }
-  :root[data-theme="light"] .occ-med { color: #8a5d00; }
-  :root[data-theme="light"] .occ-high { color: #ba1a1a; }
+  .occ-low { color: var(--status-good); }
+  .occ-med { color: var(--status-warn); }
+  .occ-high { color: var(--status-bad); }
   .delay-tag {
     display: inline-block;
     margin-left: 6px;
     padding: 1px 6px;
     border-radius: 6px;
     background: rgba(255,180,84,0.18);
-    color: #ffb454;
+    color: var(--status-warn);
     font-size: 0.72rem;
     font-weight: 700;
   }
-  .delay-tag.cancel { background: rgba(255,180,171,0.18); color: #ffb4ab; }
+  .delay-tag.cancel { background: rgba(255,180,171,0.18); color: var(--status-bad); }
   .route-rel { font-weight: 600; font-size: 0.85rem; }
-  .route-rel.urgent { color: #ffb4ab; }
-  .route-rel.soon { color: #ffd479; }
-  .route-rel.ok { color: #8bd99f; }
+  .route-rel.urgent { color: var(--status-bad); }
+  .route-rel.soon { color: var(--status-warn); }
+  .route-rel.ok { color: var(--status-good); }
   .route-rel.gone { color: var(--muted); opacity: 0.7; }
-  :root[data-theme="light"] .route-rel.urgent { color: #ba1a1a; }
-  :root[data-theme="light"] .route-rel.soon { color: #8a5d00; }
-  :root[data-theme="light"] .route-rel.ok { color: #1e6b3a; }
   .route-lines {
     color: var(--muted);
     font-size: 0.85rem;
@@ -445,9 +419,9 @@
     cursor: pointer;
     box-shadow: 0 2px 10px rgba(0,0,0,0.3);
   }
-  .leave-bar .lb-count.urgent { color: #ffb4ab; }
-  .leave-bar .lb-count.soon { color: #ffd479; }
-  .leave-bar .lb-count.ok { color: #8bd99f; }
+  .leave-bar .lb-count.urgent { color: var(--status-bad); }
+  .leave-bar .lb-count.soon { color: var(--status-warn); }
+  .leave-bar .lb-count.ok { color: var(--status-good); }
   .leave-bar .lb-sub { color: var(--on-primary-container); opacity: 0.7; font-weight: 500; }
   #leaveByCard h2 { color: var(--on-primary-container); opacity: 0.7; }
   .leave-grid {
@@ -501,22 +475,13 @@
     white-space: nowrap;
   }
   .leave-countdown.urgent, .leave-countdown.highlight.urgent {
-    color: #ffb4ab;
+    color: var(--status-bad);
   }
   .leave-countdown.soon, .leave-countdown.highlight.soon {
-    color: #ffd479;
+    color: var(--status-warn);
   }
   .leave-countdown.ok, .leave-countdown.highlight.ok {
-    color: #8bd99f;
-  }
-  :root[data-theme="light"] .leave-countdown.urgent, :root[data-theme="light"] .leave-countdown.highlight.urgent {
-    color: #ba1a1a;
-  }
-  :root[data-theme="light"] .leave-countdown.soon, :root[data-theme="light"] .leave-countdown.highlight.soon {
-    color: #8a5d00;
-  }
-  :root[data-theme="light"] .leave-countdown.ok, :root[data-theme="light"] .leave-countdown.highlight.ok {
-    color: #1e6b3a;
+    color: var(--status-good);
   }
   .leave-sub {
     text-align: center;
@@ -526,13 +491,13 @@
     margin-top: 8px;
   }
   .route-warning {
-    color: #ffb84d;
+    color: var(--status-warn);
     font-size: 0.8rem;
     margin-top: 4px;
   }
   .route-livetag {
     font-size: 0.75rem;
-    color: #4dff88;
+    color: var(--status-good);
     margin-left: 4px;
   }
   .loading { color: var(--muted); font-size: 0.9rem; }
@@ -561,7 +526,7 @@
   .skel-strip { display: flex; gap: 4px; }
   .skel-strip > div { flex: 1; height: 86px; border-radius: 12px; }
   .updated { text-align: center; color: var(--muted); font-size: 0.75rem; margin-top: 8px; }
-  .updated.stale { color: #ffb454; }
+  .updated.stale { color: var(--status-warn); }
   .footer-actions { text-align: center; margin: 4px 0 16px; }
   .force-update {
     background: transparent;
@@ -573,48 +538,87 @@
     font-weight: 500;
     cursor: pointer;
   }
-  :root[data-theme="light"] .updated.stale,
-  :root[data-theme="light"] .stale-note { color: #8a5d00; }
   /* M3 segmented button group */
-  .day-toggle {
+  .btn-ic { flex: none; }
+  /* Compact day stepper — replaces the full-width Today/Tomorrow bar. */
+  .day-stepper {
     display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     margin-bottom: 14px;
-    border: 1px solid var(--md-outline);
+    padding: 4px;
+    border: 1px solid var(--md-outline-variant);
     border-radius: var(--md-shape-full);
-    overflow: hidden;
+    background: var(--md-surface-container);
   }
-  .day-toggle button {
+  .day-arrow {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: var(--md-shape-full);
+    background: transparent;
+    color: var(--accent);
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.15s ease;
+  }
+  .day-arrow:hover { background: color-mix(in srgb, var(--md-primary) 10%, transparent); }
+  .day-arrow:active { transform: scale(0.9); }
+  .day-arrow:disabled { color: var(--md-outline-variant); cursor: default; }
+  .day-arrow:disabled:hover { background: transparent; }
+  .day-current {
     flex: 1;
-    min-height: 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.15;
+  }
+  .day-name {
+    font: var(--md-title-medium);
+    font-weight: 700;
+    color: var(--text);
+  }
+  .day-date {
+    font: var(--md-label-small);
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+
+  /* Master direction toggle — same pill frame as the day stepper,
+     two segments, accent-filled active for stronger emphasis. */
+  .dir-toggle {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 10px;
+    padding: 4px;
+    border: 1px solid var(--md-outline-variant);
+    border-radius: var(--md-shape-full);
+    background: var(--md-surface-container);
+  }
+  .dir-toggle button {
+    flex: 1;
+    min-height: 40px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 10px;
     border: none;
-    border-right: 1px solid var(--md-outline);
-    font: var(--md-label-large);
-    cursor: pointer;
+    border-radius: var(--md-shape-full);
     background: transparent;
     color: var(--text);
+    font: var(--md-label-large);
+    cursor: pointer;
     transition: background 0.2s ease, color 0.2s ease;
   }
-  .day-toggle button:hover { background: color-mix(in srgb, var(--md-primary) 8%, transparent); }
-  .btn-ic { flex: none; }
-  .day-toggle button:last-child { border-right: none; }
-  .day-toggle button.active {
-    background: var(--primary-container);
-    color: var(--on-primary-container);
-    font-weight: 700;
-  }
-  /* Master direction toggle — stronger emphasis than the day toggle. */
-  .dir-toggle {
-    margin-bottom: 10px;
-    border-color: var(--accent);
-  }
+  .dir-toggle button:hover { background: color-mix(in srgb, var(--md-primary) 10%, transparent); }
   .dir-toggle button.active {
     background: var(--accent);
     color: var(--on-accent);
+    font-weight: 700;
   }
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(4px); }

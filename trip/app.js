@@ -33,9 +33,12 @@ function weatherIcon(category, size) {
 }
 
 const OUTFIT_ICONS = {
-  shirt: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3 5 6l2 3 2-1.4V21h6V7.6L17 9l2-3-4-3a3 3 0 0 1-6 0Z"/></svg>`,
-  sweater: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3 4 7l2 6 3-2.2V21h6V10.8l3 2.2 2-6-5-4a3 3 0 0 1-6 0Z"/></svg>`,
-  coat: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3 5 6l2 4 2-1.2V21h6V8.8l2 1.2 2-4-4-3a3 3 0 0 1-6 0Z"/><path d="M12 6v15"/></svg>`,
+  // Short-sleeve tee: stubby sleeves, wide crew neck.
+  shirt: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3.5 5.5 5 3.5 8.5l3 1.8L8 9v12h8V9l1.5 1.3 3-1.8L18.5 5 15 3.5a3 3 0 0 1-6 0Z"/></svg>`,
+  // Long-sleeve pullover: full sleeves down the sides + ribbed cuffs and neck.
+  sweater: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3.5 4 5.5 2.5 16l2.8.6.7-7V21h12v-11.4l.7 7 2.8-.6L22 5.5 17 3.5a3 3 0 0 1-6 0Z"/><path d="M4 15.5h2.7M17.3 15.5H20M9.3 4.2 12 6.6l2.7-2.4"/></svg>`,
+  // Long overcoat: collar lapels, longer body, centre button placket.
+  coat: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 5 5 4 11l2.2.6V21h11.6v-9.4L20 11l-1-6-3-2-3 3-3-3Z"/><path d="M12 6.5V21M11.4 11h.01M11.4 14h.01"/></svg>`,
   umbrella: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 8 0 0 1 9 8H3a9 8 0 0 1 9-8Z"/><path d="M12 11v7a2.5 2.5 0 0 0 5 0"/><path d="M12 3V2"/></svg>`,
 };
 function outfitIcon(key) { return key === "sun" ? weatherIcon("sun", 28) : (OUTFIT_ICONS[key] || ""); }
@@ -81,7 +84,7 @@ function toggleTheme() {
 }
 const MOON = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
 const SUN = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>`;
-applyTheme(localStorage.getItem("theme") || "dark");
+applyTheme(localStorage.getItem("theme") || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"));
 
 // --- helpers ---
 function ymd(d) {
@@ -148,7 +151,10 @@ async function planTrip(e) {
   status("Finding place…");
   let places;
   try { places = await geocode(dest); }
-  catch (err) { status("Couldn't reach the location service."); return false; }
+  catch (err) {
+    tripError("Couldn't reach the location service.", () => document.getElementById("tripForm").requestSubmit());
+    return false;
+  }
   if (!places.length) { status(`No European place found for "${dest}".`); return false; }
 
   // If several matches, let the user pick; default to the first.
@@ -174,14 +180,33 @@ function renderPlaceChips(places, start, end) {
   });
 }
 
+// Shimmer placeholders while the forecast loads.
+function showTripSkeleton() {
+  document.getElementById("tripResults").innerHTML =
+    `<div class="skeleton skel-overall"></div>` +
+    `<div class="day-grid">` +
+    `<div class="skeleton skel-day"></div>`.repeat(4) +
+    `</div>`;
+}
+
+// Error state with a Retry button (matches the dayplanner pattern).
+function tripError(msg, retryFn) {
+  status("");
+  const res = document.getElementById("tripResults");
+  res.innerHTML = `<div class="trip-error">${msg}` +
+    (retryFn ? `<button class="retry-btn" id="tripRetry">Retry</button>` : "") + `</div>`;
+  if (retryFn) document.getElementById("tripRetry").onclick = retryFn;
+}
+
 let currentStart = "", currentEnd = "";
 async function runPlan(place, start, end) {
   status(`Loading weather for ${place.short}…`);
+  showTripSkeleton();
   let data;
   try { data = await fetchTripWeather(place.lat, place.lon, start, end); }
-  catch (err) { status("Couldn't load the forecast."); return; }
+  catch (err) { tripError("Couldn't load the forecast.", () => runPlan(place, start, end)); return; }
   if (!data.daily || !data.daily.time || !data.daily.time.length) {
-    status("No forecast for those dates (try within the next ~16 days).");
+    tripError("No forecast for those dates (try within the next ~16 days).");
     return;
   }
   currentStart = start; currentEnd = end;

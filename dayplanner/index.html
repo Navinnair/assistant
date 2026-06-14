@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Office Planner</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#091613">
+<meta name="theme-color" content="#141218">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -16,7 +16,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../tokens.css">
 <link rel="stylesheet" href="styles.css">
-<script>document.documentElement.setAttribute("data-theme", localStorage.getItem("theme") || "dark");</script>
+<script>document.documentElement.setAttribute("data-theme", localStorage.getItem("theme") || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"));</script>
 </head>
 <body>
   <div class="pull-indicator" id="pullIndicator" aria-hidden="true" style="display:none">↻ Release to refresh</div>
@@ -24,9 +24,9 @@
   <header class="header-row">
     <h1>Office Planner</h1>
     <div class="header-actions">
-      <a class="theme-toggle" href="../" title="All apps" aria-label="Back to home page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></a>
-      <button class="theme-toggle" id="refreshBtn" onclick="loadAll()" title="Refresh" aria-label="Refresh data"></button>
-      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle light/dark theme"></button>
+      <a class="icon-btn" href="../" title="All apps" aria-label="Back to home page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></a>
+      <button class="icon-btn" id="refreshBtn" onclick="loadAll()" title="Refresh" aria-label="Refresh data"></button>
+      <button class="icon-btn" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle light/dark theme"></button>
     </div>
   </header>
   <p class="subtitle" id="dateLine"></p>
@@ -38,14 +38,22 @@
   <main>
   <div class="dayoff-note" id="dayOffNote" role="status" style="display:none"></div>
 
-  <div class="day-toggle dir-toggle" role="group" aria-label="Direction">
+  <div class="dir-toggle" role="group" aria-label="Direction">
     <button id="btnDirOffice" class="active" onclick="selectDirection('office')" aria-pressed="true"><svg class="btn-ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2"/></svg>To Work</button>
     <button id="btnDirHome" onclick="selectDirection('home')" aria-pressed="false"><svg class="btn-ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>Going Home</button>
   </div>
 
-  <div class="day-toggle" role="group" aria-label="Day">
-    <button id="btnToday" class="active" onclick="selectDay(0)" aria-pressed="true">Today</button>
-    <button id="btnTomorrow" onclick="selectDay(1)" aria-pressed="false">Tomorrow</button>
+  <div class="day-stepper" role="group" aria-label="Day">
+    <button class="day-arrow" id="dayPrev" onclick="stepDay(-1)" aria-label="Previous day">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    </button>
+    <div class="day-current" aria-live="polite">
+      <span class="day-name" id="dayName">Today</span>
+      <span class="day-date" id="dayDate"></span>
+    </div>
+    <button class="day-arrow" id="dayNext" onclick="stepDay(1)" aria-label="Next day">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    </button>
   </div>
 
   <div class="disruption-banner" id="disruptionBanner" role="alert" style="display:none"></div>
