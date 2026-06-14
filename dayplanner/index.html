@@ -108,9 +108,28 @@
   .weather-detail { color: var(--muted); font-size: 0.78rem; margin-top: 4px; }
   .weather-umbrella { font-size: 0.8rem; font-weight: 600; margin-top: 6px; }
   .big-temp { font-size: 1.4rem; font-weight: 800; margin-top: 2px; }
+  .outfit-sections {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .outfit-section {
+    text-align: center;
+    padding: 12px 8px;
+    border-radius: 16px;
+    background: var(--card-high);
+  }
+  .outfit-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
   .outfit-icon { font-size: 2.6rem; text-align: center; margin-bottom: 6px; }
   .outfit-text { text-align: center; font-size: 1.05rem; font-weight: 700; }
-  .outfit-notes { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 6px; }
+  .outfit-notes { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 10px; }
   .route {
     border-left: 4px solid var(--accent);
     border-radius: 4px 16px 16px 4px;
@@ -514,24 +533,34 @@ function renderOutfit(data, dayIdx) {
   const wind = daytimeMaxWind(data, dayIdx);
   const minTemp = daytimeMinTemp(data, dayIdx);
 
-  let icon, text, notes = [];
+  let wearIcon, wearText, jacketIcon, jacketText, notes = [];
 
   if (minTemp < 2) {
-    icon = "🧥❄️";
-    text = "Big winter coat";
+    wearIcon = "🧶";
+    wearText = "Thermal layers + warm sweater";
+    jacketIcon = "🧥❄️";
+    jacketText = "Big winter coat";
     notes.push("Scarf + gloves recommended");
   } else if (minTemp < 9) {
-    icon = "🧥";
-    text = "Medium/warm coat";
+    wearIcon = "🧶";
+    wearText = "Warm sweater";
+    jacketIcon = "🧥";
+    jacketText = "Medium/warm coat";
   } else if (minTemp < 15) {
-    icon = "🧥";
-    text = "Light jacket / small coat";
+    wearIcon = "👕";
+    wearText = "Long sleeve / light sweater";
+    jacketIcon = "🧥";
+    jacketText = "Light jacket";
   } else if (minTemp < 21) {
-    icon = "👕";
-    text = "Sweater or light layers, no coat needed";
+    wearIcon = "👕";
+    wearText = "T-shirt or light top";
+    jacketIcon = "🧥";
+    jacketText = "No coat needed";
   } else {
-    icon = "👕☀️";
-    text = "T-shirt, no jacket needed";
+    wearIcon = "👕";
+    wearText = "T-shirt";
+    jacketIcon = "☀️";
+    jacketText = "No jacket needed";
   }
 
   if (rainProb >= 40) {
@@ -543,8 +572,18 @@ function renderOutfit(data, dayIdx) {
 
   const el = document.getElementById("outfit");
   el.innerHTML = `
-    <div class="outfit-icon">${icon}</div>
-    <div class="outfit-text">${text}</div>
+    <div class="outfit-sections">
+      <div class="outfit-section">
+        <div class="outfit-icon">${wearIcon}</div>
+        <div class="outfit-label">Wear</div>
+        <div class="outfit-text">${wearText}</div>
+      </div>
+      <div class="outfit-section">
+        <div class="outfit-icon">${jacketIcon}</div>
+        <div class="outfit-label">Outerwear</div>
+        <div class="outfit-text">${jacketText}</div>
+      </div>
+    </div>
     ${notes.length ? `<div class="outfit-notes">${notes.join(" · ")}</div>` : ""}
   `;
   flashIn(el);
