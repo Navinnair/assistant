@@ -13,6 +13,8 @@ const CONFIG = {
   waking: { start: 8, end: 21 },
   // Auto-refresh cadence.
   refreshMs: 5 * 60 * 1000,
+  // Don't show cached routes older than this — old transit times are useless.
+  routeCacheMaxAgeMs: 30 * 60 * 1000,
 };
 const HOME = CONFIG.home;
 const OFFICE = CONFIG.office;
@@ -366,6 +368,23 @@ function lineColor(line, type) {
   return LINE_COLORS[line] || TYPE_COLORS[type] || "#5b6770";
 }
 
+// Color tier for a "minutes from now" value: urgent (red) / soon (amber) / ok.
+function leaveTier(diffMin) {
+  if (diffMin <= CONFIG.urgentMin) return "urgent";
+  if (diffMin <= CONFIG.soonMin) return "soon";
+  return "ok";
+}
+
+// The departure you'd actually take now: first one you can still catch,
+// else the last (you're too late — shown as "now").
+function pickChosen(summaries, now) {
+  let chosen = summaries[summaries.length - 1];
+  for (const s of summaries) {
+    if (new Date(s.departure) > now) { chosen = s; break; }
+  }
+  return chosen;
+}
+
 function renderRoutes(elementId, summaries, count) {
   if (!summaries.length) {
     document.getElementById(elementId).innerHTML = `<div class="loading">No routes found</div>`;
@@ -387,8 +406,8 @@ function renderRoutes(elementId, summaries, count) {
       ? `<div class="route-walk">🚶 ${s.walk.minutes} min walk to ${s.walk.dest}</div>`
       : "";
     return `
-      <div class="route">
-        <div class="route-time">${fmtTime(s.departure)} → ${fmtTime(s.arrival)} (${fmtDuration(s.durationMs)})</div>
+      <div class="route" data-departure="${s.departure}">
+        <div class="route-time">${fmtTime(s.departure)} → ${fmtTime(s.arrival)} (${fmtDuration(s.durationMs)})<span class="route-rel"></span></div>
         ${walkHtml}
         ${legsHtml}
       </div>`;
@@ -399,6 +418,39 @@ function renderRoutes(elementId, summaries, count) {
 
   const moreBtn = document.getElementById("showMoreBtn");
   moreBtn.style.display = summaries.length > count ? "" : "none";
+
+  refreshRouteLive();
+}
+
+// Live per-row overlay (today only): relative "in X min" countdown + highlight
+// the departure the Time-to-Go card picked. Cheap DOM update, runs on the tick.
+function refreshRouteLive() {
+  const list = document.getElementById("routesList");
+  if (!list) return;
+  const rows = list.querySelectorAll(".route");
+  if (!rows.length) return;
+
+  const summaries = routeCache[selectedDirection];
+  const now = new Date();
+  const live = selectedDay === 0 && summaries && summaries.length;
+  const chosenDep = live ? pickChosen(summaries, now).departure : null;
+
+  rows.forEach((row) => {
+    const dep = row.getAttribute("data-departure");
+    const rel = row.querySelector(".route-rel");
+    if (live && dep) {
+      const diff = Math.round((new Date(dep) - now) / 60000);
+      if (rel) {
+        if (diff < 0) { rel.textContent = " · departed"; rel.className = "route-rel gone"; }
+        else if (diff === 0) { rel.textContent = " · now"; rel.className = "route-rel " + leaveTier(0); }
+        else { rel.textContent = ` · in ${diff} min`; rel.className = "route-rel " + leaveTier(diff); }
+      }
+      row.classList.toggle("chosen", dep === chosenDep);
+    } else {
+      if (rel) { rel.textContent = ""; rel.className = "route-rel"; }
+      row.classList.remove("chosen");
+    }
+  });
 }
 
 let weatherData = null;
@@ -444,6 +496,7 @@ function selectDirection(direction) {
     document.getElementById("showMoreBtn").style.display = "none";
   }
   updateLeaveBy();
+  renderStaleNote();
 }
 
 function showMoreRoutes() {
@@ -469,15 +522,8 @@ function updateLeaveBy() {
     selectedDirection === "office" ? "Time to Go — To Office" : "Time to Go — To Home";
 
   // s.departure is the API-accurate time to leave the origin (start of the
-  // walk to the station). Pick the first option you can still catch; if every
-  // option is already past, fall back to the last and show "Leave now!".
-  let chosen = summaries[summaries.length - 1];
-  for (const s of summaries) {
-    if (new Date(s.departure) > now) {
-      chosen = s;
-      break;
-    }
-  }
+  // walk to the station).
+  const chosen = pickChosen(summaries, now);
 
   const leaveTime = new Date(chosen.departure);
   // The actual transit departure = first transit leg's board time.
@@ -486,23 +532,16 @@ function updateLeaveBy() {
   const leaveDiff = Math.round((leaveTime - now) / 60000);
   const departDiff = Math.round((departTime - now) / 60000);
 
-  // Priority level for color-coding: "urgent" (red), "soon" (amber), "ok" (green)
-  function priorityLevel(diffMin) {
-    if (diffMin <= CONFIG.urgentMin) return "urgent";
-    if (diffMin <= CONFIG.soonMin) return "soon";
-    return "ok";
-  }
-
   function countdownText(diffMin) {
-    if (diffMin <= 0) return ["Now!", priorityLevel(diffMin)];
-    if (diffMin === 1) return ["1 min", priorityLevel(diffMin)];
-    return [`${diffMin} min`, priorityLevel(diffMin)];
+    if (diffMin <= 0) return ["Now!", leaveTier(diffMin)];
+    if (diffMin === 1) return ["1 min", leaveTier(diffMin)];
+    return [`${diffMin} min`, leaveTier(diffMin)];
   }
 
   function leaveCountdownText(diffMin) {
-    if (diffMin <= 0) return ["Leave now!", priorityLevel(diffMin)];
-    if (diffMin === 1) return ["Leave in 1 min", priorityLevel(diffMin)];
-    return [`Leave in ${diffMin} mins`, priorityLevel(diffMin)];
+    if (diffMin <= 0) return ["Leave now!", leaveTier(diffMin)];
+    if (diffMin === 1) return ["Leave in 1 min", leaveTier(diffMin)];
+    return [`Leave in ${diffMin} mins`, leaveTier(diffMin)];
   }
 
   const [leaveText, leaveLevel] = leaveCountdownText(leaveDiff);
@@ -527,40 +566,84 @@ function updateLeaveBy() {
   flashIn(el);
 }
 
+// --- Route cache (localStorage) for offline fallback ---
+const ROUTE_CACHE_KEY = "planner_routes_cache";
+let liveLoaded = { home: false, office: false };
+let routeCacheSavedAt = 0;
+
+function loadRouteCache(dayIdx) {
+  try {
+    const o = JSON.parse(localStorage.getItem(ROUTE_CACHE_KEY) || "null");
+    if (!o || o.dayIdx !== dayIdx) return null;
+    if (Date.now() - o.savedAt > CONFIG.routeCacheMaxAgeMs) return null;
+    return o; // { dayIdx, savedAt, routes: {home, office} }
+  } catch (e) {
+    return null;
+  }
+}
+
+function saveRouteCache(dayIdx) {
+  if (!liveLoaded.home && !liveLoaded.office) return; // never persist stale-only
+  try {
+    localStorage.setItem(ROUTE_CACHE_KEY, JSON.stringify({
+      dayIdx, savedAt: Date.now(), routes: routeCache,
+    }));
+  } catch (e) {}
+}
+
+// Shows "showing routes from HH:MM" when the displayed direction is cache-only.
+function renderStaleNote() {
+  const el = document.getElementById("routesStale");
+  const stale = !liveLoaded[selectedDirection] && routeCache[selectedDirection] && routeCacheSavedAt;
+  if (stale) {
+    el.textContent = `⚠ Offline — showing routes from ${fmtTime(new Date(routeCacheSavedAt).toISOString())}`;
+    el.style.display = "";
+  } else {
+    el.style.display = "none";
+  }
+}
+
 async function loadRoutes(dayIdx) {
   routeCache = { home: null, office: null };
+  liveLoaded = { home: false, office: false };
+  routeCacheSavedAt = 0;
   visibleCount = 5;
-  updateLeaveBy();
-  document.getElementById("routesList").innerHTML = '<div class="loading">Loading...</div>';
-  document.getElementById("showMoreBtn").style.display = "none";
 
-  const fetchHome = async () => {
+  // Seed from cache (if fresh enough) so something shows instantly / offline.
+  const cached = loadRouteCache(dayIdx);
+  if (cached) {
+    routeCache = cached.routes;
+    routeCacheSavedAt = cached.savedAt;
+    if (routeCache[selectedDirection]) renderRoutes("routesList", routeCache[selectedDirection], visibleCount);
+    updateLeaveBy();
+    renderStaleNote();
+  } else {
+    updateLeaveBy();
+    document.getElementById("routesList").innerHTML = '<div class="loading">Loading...</div>';
+    document.getElementById("showMoreBtn").style.display = "none";
+  }
+
+  const fetchDir = async (dir, origin, dest, ref) => {
     try {
-      const homeTime = routingDateTime(dayIdx, CONFIG.homeReturn.hour, CONFIG.homeReturn.minute);
-      const homeRoutes = await fetchRoutesPadded(OFFICE, HOME, homeTime);
-      routeCache.home = homeRoutes.map(r => summarizeRoute(r));
-      if (selectedDirection === "home") {
-        renderRoutes("routesList", routeCache.home, visibleCount);
+      const time = routingDateTime(dayIdx, ref.hour, ref.minute);
+      const routes = await fetchRoutesPadded(origin, dest, time);
+      routeCache[dir] = routes.map(r => summarizeRoute(r));
+      liveLoaded[dir] = true;
+      if (selectedDirection === dir) {
+        renderRoutes("routesList", routeCache[dir], visibleCount);
         updateLeaveBy();
+        renderStaleNote();
       }
     } catch (e) {
-      if (selectedDirection === "home") document.getElementById("routesList").innerHTML = `<div class="loading">Failed to load routes</div>`;
+      // Keep any cached rows on screen; only show failure if we have nothing.
+      if (selectedDirection === dir && !routeCache[dir]) {
+        document.getElementById("routesList").innerHTML = `<div class="loading">Failed to load routes</div>`;
+      }
     }
   };
 
-  const fetchOffice = async () => {
-    try {
-      const officeTime = routingDateTime(dayIdx, CONFIG.officeArrival.hour, CONFIG.officeArrival.minute);
-      const officeRoutes = await fetchRoutesPadded(HOME, OFFICE, officeTime);
-      routeCache.office = officeRoutes.map(r => summarizeRoute(r));
-      if (selectedDirection === "office") {
-        renderRoutes("routesList", routeCache.office, visibleCount);
-        updateLeaveBy();
-      }
-    } catch (e) {
-      if (selectedDirection === "office") document.getElementById("routesList").innerHTML = `<div class="loading">Failed to load routes</div>`;
-    }
-  };
+  const fetchHome = () => fetchDir("home", OFFICE, HOME, CONFIG.homeReturn);
+  const fetchOffice = () => fetchDir("office", HOME, OFFICE, CONFIG.officeArrival);
 
   // Load the currently-selected direction first so it appears sooner.
   if (selectedDirection === "home") {
@@ -571,6 +654,7 @@ async function loadRoutes(dayIdx) {
     await fetchHome();
   }
 
+  saveRouteCache(dayIdx);
   lastUpdatedAt = Date.now();
   renderUpdated();
 }
@@ -585,7 +669,7 @@ function renderUpdated() {
   el.classList.toggle("stale", mins >= 6);
 }
 
-setInterval(() => { updateLeaveBy(); renderUpdated(); }, 15000);
+setInterval(() => { updateLeaveBy(); refreshRouteLive(); renderUpdated(); }, 15000);
 
 // --- Theme toggle ---
 document.getElementById("refreshBtn").innerHTML = UI_ICONS.refresh;

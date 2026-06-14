@@ -138,17 +138,46 @@
   .outfit-text { text-align: center; font-size: 0.95rem; font-weight: 700; }
   .outfit-notes { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 10px; }
   .route {
-    border-left: 4px solid var(--accent);
+    border-left: 4px solid var(--outline);
     border-radius: 4px 16px 16px 4px;
     background: var(--card-high);
     padding: 10px 14px;
     margin-bottom: 8px;
   }
   .route:last-child { margin-bottom: 0; }
+  /* The departure the Time-to-Go card picked. */
+  .route.chosen {
+    border-left-color: var(--accent);
+    background: var(--primary-container);
+  }
+  .route.chosen::before {
+    content: "▶ catch this";
+    display: block;
+    color: var(--accent);
+    font-size: 0.66rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
   .route-time {
     font-weight: 700;
     font-size: 1rem;
   }
+  .stale-note {
+    color: #ffb454;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .route-rel { font-weight: 600; font-size: 0.85rem; }
+  .route-rel.urgent { color: #ffb4ab; }
+  .route-rel.soon { color: #ffd479; }
+  .route-rel.ok { color: #8bd99f; }
+  .route-rel.gone { color: var(--muted); opacity: 0.7; }
+  :root[data-theme="light"] .route-rel.urgent { color: #ba1a1a; }
+  :root[data-theme="light"] .route-rel.soon { color: #8a5d00; }
+  :root[data-theme="light"] .route-rel.ok { color: #1e6b3a; }
   .route-lines {
     color: var(--muted);
     font-size: 0.85rem;
