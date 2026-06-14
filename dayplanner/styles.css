@@ -68,19 +68,18 @@
   .theme-toggle.spinning svg { animation: spin 0.8s linear infinite; }
   .pull-indicator {
     position: fixed;
-    top: 0;
+    top: 8px;
     left: 50%;
-    transform: translateX(-50%) translateY(-120%);
+    transform: translateX(-50%);
     background: var(--primary-container);
     color: var(--on-primary-container);
     padding: 8px 16px;
-    border-radius: 0 0 14px 14px;
+    border-radius: 14px;
     font-size: 0.8rem;
     font-weight: 600;
     z-index: 90;
-    transition: transform 0.2s ease;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.3);
   }
-  .pull-indicator.show { transform: translateX(-50%) translateY(0); }
   .subtitle { color: var(--muted); font-size: 0.875rem; margin-bottom: 8px; }
   .weather-strip {
     display: flex;
@@ -361,10 +360,29 @@
     background: linear-gradient(160deg, var(--primary-container), color-mix(in srgb, var(--primary-container) 78%, #000));
     border: 1px solid var(--outline);
     border-color: color-mix(in srgb, var(--accent) 35%, transparent);
-    position: sticky;
-    top: 8px;
-    z-index: 10;
   }
+  /* Slim sticky bar shown once the full Time-to-Go card scrolls out of view. */
+  .leave-bar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    margin: -16px -16px 12px;
+    padding: 10px 16px;
+    background: var(--primary-container);
+    color: var(--on-primary-container);
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, var(--outline));
+    font-size: 0.9rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  }
+  .leave-bar .lb-count.urgent { color: #ffb4ab; }
+  .leave-bar .lb-count.soon { color: #ffd479; }
+  .leave-bar .lb-count.ok { color: #8bd99f; }
+  .leave-bar .lb-sub { color: var(--on-primary-container); opacity: 0.7; font-weight: 500; }
   #leaveByCard h2 { color: var(--on-primary-container); opacity: 0.7; }
   .leave-grid {
     display: grid;

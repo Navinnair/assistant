@@ -449,7 +449,9 @@ function mapsUrlFor(direction) {
   return `https://www.google.com/maps/dir/?api=1&origin=${o.lat},${o.lon}` +
     `&destination=${d.lat},${d.lon}&travelmode=transit`;
 }
+let lastSwipeAt = 0;
 function openRoute() {
+  if (Date.now() - lastSwipeAt < 400) return; // ignore the tap a swipe leaves behind
   window.open(mapsUrlFor(selectedDirection), "_blank", "noopener");
 }
 
@@ -689,6 +691,8 @@ function updateLeaveBy() {
   const summaries = routeCache[selectedDirection];
   if (selectedDay !== 0 || !summaries || !summaries.length) {
     card.style.display = "none";
+    leaveActive = false;
+    updateLeaveBar();
     return;
   }
   card.style.display = "block";
@@ -745,6 +749,25 @@ function updateLeaveBy() {
     <div class="leave-sub">${chosen.walk ? `${chosen.walk.minutes} min walk to ${chosen.walk.dest}` : "no walk needed"}</div>
   `;
   flashIn(el);
+
+  // Feed the slim sticky bar (shown when this card is scrolled out of view).
+  const dirIcon = selectedDirection === "office" ? "🏢" : "🏠";
+  leaveActive = true;
+  leaveBarHtml = `<span>${dirIcon}</span><span>Leave ${fmtTime(leaveTime.toISOString())}</span>` +
+    `<span class="lb-count ${leaveLevel}">· ${leaveText}</span>` +
+    `<span class="lb-sub">${lineLabel} ${fmtTime(departTime.toISOString())}</span>`;
+  updateLeaveBar();
+}
+
+// --- Slim "leave by" bar that appears once the full card scrolls away ---
+let leaveBarHtml = "";
+let leaveActive = false;
+let leaveCardVisible = true;
+function updateLeaveBar() {
+  const bar = document.getElementById("leaveBar");
+  if (!bar) return;
+  bar.innerHTML = leaveBarHtml;
+  bar.style.display = (leaveActive && !leaveCardVisible) ? "flex" : "none";
 }
 
 // --- Route cache (localStorage) for offline fallback ---
@@ -953,13 +976,26 @@ loadAll();
 // Auto-refresh every 5 minutes
 setInterval(loadAll, CONFIG.refreshMs);
 
-// --- Pull-to-refresh (mobile): drag down from the top to reload ---
+// Slim "leave by" bar: reveal it when the full Time-to-Go card scrolls away.
+if ("IntersectionObserver" in window) {
+  const card = document.getElementById("leaveByCard");
+  if (card) {
+    new IntersectionObserver((entries) => {
+      leaveCardVisible = entries[0].isIntersecting;
+      updateLeaveBar();
+    }, { threshold: 0 }).observe(card);
+  }
+}
+
+// --- Touch gestures: pull-to-refresh + swipe to switch direction ---
 (function () {
   const PULL_THRESHOLD = 70;
+  const SWIPE_THRESHOLD = 60;
   const ind = document.getElementById("pullIndicator");
-  let startY = null, armed = false;
+  let startY = null, startX = 0, armed = false;
 
   window.addEventListener("touchstart", (e) => {
+    startX = e.touches[0].clientX;
     startY = window.scrollY === 0 ? e.touches[0].clientY : null;
     armed = false;
   }, { passive: true });
@@ -968,13 +1004,22 @@ setInterval(loadAll, CONFIG.refreshMs);
     if (startY == null || isLoading) return;
     const dy = e.touches[0].clientY - startY;
     armed = dy > PULL_THRESHOLD;
-    ind.classList.toggle("show", armed);
+    ind.style.display = armed ? "block" : "none";
   }, { passive: true });
 
-  window.addEventListener("touchend", () => {
-    if (armed) { ind.classList.remove("show"); loadAll(); }
-    startY = null;
+  window.addEventListener("touchend", (e) => {
+    ind.style.display = "none";
+    if (armed) loadAll();
     armed = false;
+
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = startY == null ? 0 : e.changedTouches[0].clientY - startY;
+    // Horizontal swipe (clearly sideways) flips direction: left → Office, right → Home.
+    if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      lastSwipeAt = Date.now(); // suppress the route tap that may follow
+      selectDirection(dx < 0 ? "office" : "home");
+    }
+    startY = null;
   });
 })();
 
