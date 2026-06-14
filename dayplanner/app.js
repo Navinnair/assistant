@@ -660,6 +660,7 @@ function selectDay(dayIdx) {
     renderWeather(weatherData, dayIdx);
     renderOutfit(weatherData, dayIdx);
   }
+  refreshDayOff();
   loadRoutes(dayIdx);
 }
 
@@ -702,7 +703,10 @@ function updateLeaveBy() {
   // Follows the master direction toggle: "office" = leave home → office,
   // "home" = leave office → home. Live countdown only makes sense today.
   const summaries = routeCache[selectedDirection];
-  if (selectedDay !== 0 || !summaries || !summaries.length) {
+  // No leave-by on tomorrow, with no data, or on a day off — unless the user
+  // opted to see travel times anyway via the day-off banner toggle.
+  const hideForDayOff = dayOffInfo(selectedDay) && !showLeaveOnDayOff;
+  if (selectedDay !== 0 || hideForDayOff || !summaries || !summaries.length) {
     card.style.display = "none";
     leaveActive = false;
     updateLeaveBar();
@@ -903,6 +907,75 @@ async function loadRoutes(dayIdx) {
   renderUpdated();
 }
 
+// --- Bavarian public holidays (Nager.Date), cached ~30 days ---
+let holidayMap = {}; // "YYYY-MM-DD" -> holiday name
+function localYmd(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+async function loadHolidays(year) {
+  const key = `holidays_DE_BY_${year}`;
+  try {
+    const c = JSON.parse(localStorage.getItem(key) || "null");
+    if (c && Date.now() - c.savedAt < 30 * 24 * 3600 * 1000) return c.dates;
+  } catch (e) {}
+  try {
+    const all = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/DE`).then((r) => r.json());
+    // National holidays (counties null) plus those that include Bavaria.
+    const dates = {};
+    for (const h of all) {
+      if (!h.counties || h.counties.includes("DE-BY")) dates[h.date] = h.localName || h.name;
+    }
+    localStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), dates }));
+    return dates;
+  } catch (e) {
+    return {};
+  }
+}
+
+const WEEKEND_QUIPS = [
+  "🛋️ No office today, bro. Touch some grass.",
+  "🛌 Weekend mode on. Office can wait.",
+  "😎 It's the weekend — boss can't find you.",
+  "🍻 No commute. Trains run, you don't have to.",
+  "🦥 Zero meetings. Maximum couch.",
+];
+const HOLIDAY_QUIPS = [
+  (n) => `🎉 ${n}! Free day — boss said no.`,
+  (n) => `🥳 ${n} — no office, go enjoy.`,
+  (n) => `🎊 ${n}. Office closed, vibes open.`,
+];
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// Returns null on a working day, else a (funny) reason this day is off.
+function dayOffInfo(dayIdx) {
+  const d = new Date();
+  d.setDate(d.getDate() + dayIdx);
+  const dow = d.getDay();
+  const name = holidayMap[localYmd(d)];
+  if (name) return { holiday: true, name };
+  if (dow === 0 || dow === 6) return { holiday: false };
+  return null;
+}
+
+let showLeaveOnDayOff = false; // reveal the leave-by on a day off if heading out
+let dayOffMsg = "";            // keep the quip stable across re-renders this load
+function refreshDayOff() {
+  const note = document.getElementById("dayOffNote");
+  const info = dayOffInfo(selectedDay);
+  if (!info) { note.style.display = "none"; dayOffMsg = ""; return; }
+  if (!dayOffMsg) dayOffMsg = info.holiday ? pick(HOLIDAY_QUIPS)(info.name) : pick(WEEKEND_QUIPS);
+  note.innerHTML = `<div>${dayOffMsg}</div>` +
+    `<button class="dayoff-toggle" onclick="toggleLeaveOnDayOff()">` +
+    `${showLeaveOnDayOff ? "Hide travel times" : "🚆 Heading out? Show travel times"}</button>`;
+  note.style.display = "block";
+}
+
+function toggleLeaveOnDayOff() {
+  showLeaveOnDayOff = !showLeaveOnDayOff;
+  updateLeaveBy();
+  refreshDayOff();
+}
+
 // "Updated just now / N min ago" with an amber tint once data is stale.
 let lastUpdatedAt = 0;
 function renderUpdated() {
@@ -982,6 +1055,12 @@ async function loadAllInner() {
   document.getElementById("dateLine").textContent = new Date().toLocaleDateString("en-GB", {
     weekday: "long", year: "numeric", month: "long", day: "numeric"
   });
+
+  // Bavarian holidays (cached ~30 days); cover this year + next for late Dec.
+  const yr = new Date().getFullYear();
+  const [hy, hy2] = await Promise.all([loadHolidays(yr), loadHolidays(yr + 1)]);
+  holidayMap = { ...hy, ...hy2 };
+  refreshDayOff();
 
   // Show cached weather instantly while fresh data loads
   const cached = loadCachedWeather();
