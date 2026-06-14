@@ -9,6 +9,9 @@ const CONFIG = {
   // Leave-by countdown color thresholds (minutes to leave).
   urgentMin: 4,
   soonMin: 8,
+  // Minimum head start before a train counts as catchable — skip trains you'd
+  // need to bolt for in under this many minutes (grab-bag/reaction time).
+  prepBufferMin: 3,
   // Waking-hours window (24h) for outfit/umbrella decisions and the forecast.
   waking: { start: 8, end: 21 },
   // Auto-refresh cadence.
@@ -318,19 +321,13 @@ function renderOutfit(data, dayIdx) {
 
 function summarizeRoute(route) {
   const parts = route.parts;
-  // parts[0].from.plannedDeparture is when you leave the origin (the walk
-  // to the first station is part 0), i.e. the real "leave home" time.
-  const departure = parts[0].from.plannedDeparture;
-  const arrival = parts[parts.length - 1].to.plannedDeparture;
-  const durationMs = new Date(arrival) - new Date(departure);
 
   // Leading walk from origin to the first station, if the route has one.
   let walk = null;
+  let leadWalkMs = 0;
   if (parts[0].line && parts[0].line.transportType === "PEDESTRIAN") {
-    const mins = Math.round(
-      (new Date(parts[0].to.plannedDeparture) - new Date(parts[0].from.plannedDeparture)) / 60000
-    );
-    walk = { minutes: mins, dest: parts[0].to.name };
+    leadWalkMs = new Date(parts[0].to.plannedDeparture) - new Date(parts[0].from.plannedDeparture);
+    walk = { minutes: Math.round(leadWalkMs / 60000), dest: parts[0].to.name };
   }
 
   const legs = parts
@@ -348,6 +345,20 @@ function summarizeRoute(route) {
         .map(m => (typeof m === "string" ? m : m.text || m.title || ""))
         .filter(Boolean),
     }));
+
+  // "Leave home" = first train's board time minus the walk it takes to reach
+  // the stop. MVG occasionally mis-anchors the walk's start (leaving it after
+  // the train it's meant to connect to); deriving it this way keeps walk →
+  // board → … always consistent. Fall back to the raw walk start otherwise.
+  let departure;
+  if (legs.length && leadWalkMs) {
+    departure = new Date(new Date(legs[0].boardTime) - leadWalkMs).toISOString();
+  } else {
+    departure = parts[0].from.plannedDeparture;
+  }
+
+  const arrival = parts[parts.length - 1].to.plannedDeparture;
+  const durationMs = new Date(arrival) - new Date(departure);
 
   return { departure, arrival, durationMs, walk, legs };
 }
@@ -375,12 +386,14 @@ function leaveTier(diffMin) {
   return "ok";
 }
 
-// The departure you'd actually take now: first one you can still catch,
-// else the last (you're too late — shown as "now").
+// The departure you'd actually take: first one whose leave-home time is at
+// least prepBufferMin away (you can realistically still make it). If none
+// qualify (you're too late), fall back to the last — shown as "now".
 function pickChosen(summaries, now) {
+  const cutoff = new Date(now.getTime() + CONFIG.prepBufferMin * 60000);
   let chosen = summaries[summaries.length - 1];
   for (const s of summaries) {
-    if (new Date(s.departure) > now) { chosen = s; break; }
+    if (new Date(s.departure) > cutoff) { chosen = s; break; }
   }
   return chosen;
 }
