@@ -4,18 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Gym</title>
-<meta name="theme-color" content="#0a0c10">
+<meta name="theme-color" content="#091613">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../tokens.css">
+<script>document.documentElement.setAttribute("data-theme", localStorage.getItem("theme") || "dark");</script>
 <style>
-  :root { color-scheme: dark; }
   * { box-sizing: border-box; }
   body {
     margin: 0 auto;
-    font-family: 'Roboto', -apple-system, Segoe UI, Helvetica, Arial, sans-serif;
-    background: #0a0c10;
-    color: #e7eaf0;
+    font-family: var(--md-font);
+    background: var(--md-surface);
+    color: var(--md-on-surface);
     padding: 16px;
     max-width: 520px;
     min-height: 100vh;
@@ -24,11 +25,11 @@
     -webkit-font-smoothing: antialiased;
   }
   .header-row { display: flex; justify-content: space-between; align-items: center; }
-  h1 { font-size: 1.7rem; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+  h1 { font: var(--md-headline-small); margin: 0; letter-spacing: -0.01em; }
   .icon-btn {
-    background: #262d3a; border: none; border-radius: 50%;
-    width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
-    color: #e7eaf0; text-decoration: none;
+    background: var(--md-surface-container-high); border: none; border-radius: 50%;
+    width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+    color: var(--md-on-surface); text-decoration: none;
   }
   .stage {
     flex: 1;
@@ -46,18 +47,17 @@
   }
   .badge {
     display: inline-block;
-    background: rgba(255,180,84,0.14);
-    color: #ffb454;
-    border: 1px solid rgba(255,180,84,0.4);
-    border-radius: 999px;
+    background: color-mix(in srgb, var(--md-warning) 16%, transparent);
+    color: var(--md-warning);
+    border: 1px solid color-mix(in srgb, var(--md-warning) 40%, transparent);
+    border-radius: var(--md-shape-full);
     padding: 6px 14px;
-    font-size: 0.78rem;
-    font-weight: 700;
+    font: var(--md-label-medium);
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
-  .title { font-size: 1.4rem; font-weight: 800; margin: 0; }
-  .sub { color: #8b95a5; font-size: 0.95rem; max-width: 30ch; margin: 0; }
+  .title { font: var(--md-title-large); margin: 0; }
+  .sub { color: var(--md-on-surface-variant); font: var(--md-body-large); max-width: 30ch; margin: 0; }
 </style>
 </head>
 <body>

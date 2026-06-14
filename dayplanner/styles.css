@@ -1,32 +1,8 @@
-  /* Color tokens (Material 3 shape/spacing, professional slate/blue palette) */
-  :root {
-    --bg: #0a0c10;
-    --card: #1b212c;
-    --card-high: #262d3a;
-    --accent: #5b9dff;
-    --on-accent: #ffffff;
-    --primary-container: #1f3a5f;
-    --on-primary-container: #cfe3ff;
-    --text: #e7eaf0;
-    --muted: #8b95a5;
-    --outline: #323a48;
-  }
-  :root[data-theme="light"] {
-    --bg: #f7f8fa;
-    --card: #ffffff;
-    --card-high: #eef1f5;
-    --accent: #2f6fed;
-    --on-accent: #ffffff;
-    --primary-container: #e3edff;
-    --on-primary-container: #1a3a6e;
-    --text: #1a2230;
-    --muted: #6b7585;
-    --outline: #dde2e8;
-  }
+  /* Color tokens now live in ../tokens.css (M3 roles + back-compat aliases). */
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    font-family: 'Roboto', -apple-system, Segoe UI, Helvetica, Arial, sans-serif;
+    font-family: var(--md-font, 'Roboto', -apple-system, Segoe UI, Helvetica, Arial, sans-serif);
     background: var(--bg);
     color: var(--text);
     padding: 16px;
@@ -35,8 +11,7 @@
     -webkit-font-smoothing: antialiased;
   }
   h1 {
-    font-size: 1.7rem;
-    font-weight: 700;
+    font: var(--md-headline-small);
     margin: 0 0 4px;
     letter-spacing: -0.01em;
   }
@@ -53,8 +28,8 @@
     background: var(--card-high);
     border: none;
     border-radius: 50%;
-    width: 40px;
-    height: 40px;
+    width: 48px;
+    height: 48px;
     padding: 0;
     display: flex;
     align-items: center;
@@ -63,6 +38,7 @@
     color: var(--text);
     transition: transform 0.15s ease, background 0.2s ease;
   }
+  .theme-toggle:hover { background: var(--md-surface-container-highest); }
   .theme-toggle:active { transform: scale(0.92); }
   a.theme-toggle { text-decoration: none; }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -179,17 +155,13 @@
   .card {
     background: var(--card);
     border: 1px solid var(--outline);
-    border-radius: 24px;
+    border-radius: var(--md-shape-xl);
     padding: 16px 20px;
     margin-bottom: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-  }
-  :root[data-theme="light"] .card {
-    box-shadow: 0 2px 10px rgba(20,30,50,0.06);
+    box-shadow: var(--md-elev-1);
   }
   .card h2 {
-    font-size: 0.8125rem;
-    font-weight: 500;
+    font: var(--md-label-medium);
     margin: 0 0 12px;
     color: var(--muted);
     text-transform: uppercase;
@@ -603,29 +575,31 @@
   }
   :root[data-theme="light"] .updated.stale,
   :root[data-theme="light"] .stale-note { color: #8a5d00; }
+  /* M3 segmented button group */
   .day-toggle {
     display: flex;
     margin-bottom: 14px;
-    border: 1px solid var(--outline);
-    border-radius: 20px;
+    border: 1px solid var(--md-outline);
+    border-radius: var(--md-shape-full);
     overflow: hidden;
   }
   .day-toggle button {
     flex: 1;
+    min-height: 48px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
     padding: 10px;
     border: none;
-    border-right: 1px solid var(--outline);
-    font-size: 0.875rem;
-    font-weight: 500;
+    border-right: 1px solid var(--md-outline);
+    font: var(--md-label-large);
     cursor: pointer;
     background: transparent;
     color: var(--text);
     transition: background 0.2s ease, color 0.2s ease;
   }
+  .day-toggle button:hover { background: color-mix(in srgb, var(--md-primary) 8%, transparent); }
   .btn-ic { flex: none; }
   .day-toggle button:last-child { border-right: none; }
   .day-toggle button.active {

@@ -1,0 +1,225 @@
+/* ============================================================
+   Material Design 3 design tokens — shared across all apps.
+   Seed: blue (#2f6fed). Dark is default; [data-theme="light"] overrides.
+   Old aliases (--bg/--card/--accent/--text/--muted/--outline) kept
+   at the bottom so existing component CSS keeps working.
+   ============================================================ */
+:root {
+  color-scheme: dark;
+
+  /* --- Primary --- */
+  --md-primary: #00dec9;
+  --md-on-primary: #003731;
+  --md-primary-container: #005048;
+  --md-on-primary-container: #00fee5;
+
+  /* --- Secondary --- */
+  --md-secondary: #a0cfd2;
+  --md-on-secondary: #00373a;
+  --md-secondary-container: #1e4d51;
+  --md-on-secondary-container: #bcebee;
+
+  /* --- Tertiary --- */
+  --md-tertiary: #91d0e4;
+  --md-on-tertiary: #003641;
+  --md-tertiary-container: #004e5e;
+  --md-on-tertiary-container: #b1ecff;
+
+  /* --- Error --- */
+  --md-error: #ffb4ab;
+  --md-on-error: #690005;
+  --md-error-container: #93000a;
+  --md-on-error-container: #ffdad6;
+
+  /* --- Success / warning (extended roles, not in core M3) --- */
+  --md-success: #8bd99f;
+  --md-on-success: #00391c;
+  --md-warning: #ffd479;
+  --md-on-warning: #3d2e00;
+
+  /* --- Surfaces (tonal elevation) --- */
+  --md-surface: #091613;
+  --md-on-surface: #d7e6e1;
+  --md-on-surface-variant: #b8cac6;
+  --md-surface-container-lowest: #05100e;
+  --md-surface-container-low: #111e1c;
+  --md-surface-container: #152220;
+  --md-surface-container-high: #202c2a;
+  --md-surface-container-highest: #2a3735;
+
+  /* --- Outline --- */
+  --md-outline: #829490;
+  --md-outline-variant: #394a47;
+
+  /* --- Inverse --- */
+  --md-inverse-surface: #d7e6e1;
+  --md-inverse-on-surface: #263330;
+  --md-inverse-primary: #006b5f;
+
+  /* --- State-layer opacities (M3 spec) --- */
+  --md-state-hover: 0.08;
+  --md-state-focus: 0.10;
+  --md-state-pressed: 0.10;
+  --md-state-dragged: 0.16;
+
+  /* --- Shape scale (corner radius) --- */
+  --md-shape-xs: 4px;
+  --md-shape-sm: 8px;
+  --md-shape-md: 12px;
+  --md-shape-lg: 16px;
+  --md-shape-xl: 28px;
+  --md-shape-full: 999px;
+
+  /* --- Elevation (M3 dark uses tonal + shadow) --- */
+  --md-elev-0: none;
+  --md-elev-1: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15);
+  --md-elev-2: 0 1px 2px rgba(0,0,0,0.3), 0 2px 6px 2px rgba(0,0,0,0.15);
+  --md-elev-3: 0 4px 8px 3px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.3);
+  --md-elev-4: 0 6px 10px 4px rgba(0,0,0,0.15), 0 2px 3px rgba(0,0,0,0.3);
+
+  /* --- Type scale (Roboto). label/body/title/headline/display --- */
+  --md-font: 'Roboto', -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --md-display-small: 700 2.25rem/2.75rem var(--md-font);
+  --md-headline-small: 600 1.5rem/2rem var(--md-font);
+  --md-title-large: 700 1.375rem/1.75rem var(--md-font);
+  --md-title-medium: 500 1rem/1.5rem var(--md-font);
+  --md-title-small: 500 0.875rem/1.25rem var(--md-font);
+  --md-body-large: 400 1rem/1.5rem var(--md-font);
+  --md-body-medium: 400 0.875rem/1.25rem var(--md-font);
+  --md-body-small: 400 0.75rem/1rem var(--md-font);
+  --md-label-large: 500 0.875rem/1.25rem var(--md-font);
+  --md-label-medium: 500 0.75rem/1rem var(--md-font);
+  --md-label-small: 500 0.6875rem/1rem var(--md-font);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --md-primary: #006b5f;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #00fee5;
+  --md-on-primary-container: #00201c;
+
+  --md-secondary: #386569;
+  --md-on-secondary: #ffffff;
+  --md-secondary-container: #bcebee;
+  --md-on-secondary-container: #002022;
+
+  --md-tertiary: #216678;
+  --md-on-tertiary: #ffffff;
+  --md-tertiary-container: #b1ecff;
+  --md-on-tertiary-container: #001f27;
+
+  --md-error: #ba1a1a;
+  --md-on-error: #ffffff;
+  --md-error-container: #ffdad6;
+  --md-on-error-container: #410002;
+
+  --md-success: #1e6b3a;
+  --md-on-success: #ffffff;
+  --md-warning: #8a5d00;
+  --md-on-warning: #ffffff;
+
+  --md-surface: #eefdf8;
+  --md-on-surface: #111e1c;
+  --md-on-surface-variant: #394a47;
+  --md-surface-container-lowest: #ffffff;
+  --md-surface-container-low: #e8f7f2;
+  --md-surface-container: #e2f1ed;
+  --md-surface-container-high: #ddebe7;
+  --md-surface-container-highest: #d7e6e1;
+
+  --md-outline: #697b77;
+  --md-outline-variant: #b8cac6;
+
+  --md-inverse-surface: #263330;
+  --md-inverse-on-surface: #e5f4f0;
+  --md-inverse-primary: #00dec9;
+
+  --md-elev-1: 0 1px 2px rgba(20,30,50,0.1), 0 1px 3px 1px rgba(20,30,50,0.05);
+  --md-elev-2: 0 1px 2px rgba(20,30,50,0.1), 0 2px 6px 2px rgba(20,30,50,0.06);
+  --md-elev-3: 0 4px 8px 3px rgba(20,30,50,0.06), 0 1px 3px rgba(20,30,50,0.1);
+  --md-elev-4: 0 6px 10px 4px rgba(20,30,50,0.07), 0 2px 3px rgba(20,30,50,0.1);
+}
+
+/* ============================================================
+   Back-compat aliases — map the apps' existing var names onto
+   M3 roles. Lets old component CSS keep working unchanged.
+   ============================================================ */
+:root {
+  --bg: var(--md-surface);
+  --card: var(--md-surface-container);
+  --card-high: var(--md-surface-container-high);
+  --accent: var(--md-primary);
+  --on-accent: var(--md-on-primary);
+  --primary-container: var(--md-primary-container);
+  --on-primary-container: var(--md-on-primary-container);
+  --text: var(--md-on-surface);
+  --muted: var(--md-on-surface-variant);
+  --outline: var(--md-outline-variant);
+}
+
+/* ============================================================
+   Shared M3 component helpers (opt-in classes).
+   ============================================================ */
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* M3 state layer: put on a positioned, overflow-hidden element. */
+.md-state {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.md-state::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+  z-index: -1;
+}
+.md-state:hover::after { opacity: var(--md-state-hover); }
+.md-state:focus-visible::after { opacity: var(--md-state-focus); }
+.md-state:active::after { opacity: var(--md-state-pressed); }
+
+/* Visible focus ring everywhere (a11y) */
+:where(button, a, input, [tabindex]):focus-visible {
+  outline: 2px solid var(--md-primary);
+  outline-offset: 2px;
+}
+
+/* M3 filled button */
+.md-btn-filled {
+  min-height: 40px;
+  padding: 10px 24px;
+  border: none;
+  border-radius: var(--md-shape-full);
+  background: var(--md-primary);
+  color: var(--md-on-primary);
+  font: var(--md-label-large);
+  cursor: pointer;
+}
+
+/* M3 text/outlined icon button — 48dp target */
+.md-icon-btn {
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: var(--md-shape-full);
+  background: var(--md-surface-container-high);
+  color: var(--md-on-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+}

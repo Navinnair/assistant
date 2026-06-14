@@ -1,33 +1,8 @@
-  :root {
-    color-scheme: dark;
-    --bg: #0a0c10;
-    --card: #1b212c;
-    --card-high: #262d3a;
-    --accent: #5b9dff;
-    --on-accent: #ffffff;
-    --primary-container: #1f3a5f;
-    --on-primary-container: #cfe3ff;
-    --text: #e7eaf0;
-    --muted: #8b95a5;
-    --outline: #323a48;
-  }
-  :root[data-theme="light"] {
-    color-scheme: light;
-    --bg: #f7f8fa;
-    --card: #ffffff;
-    --card-high: #eef1f5;
-    --accent: #2f6fed;
-    --on-accent: #ffffff;
-    --primary-container: #e3edff;
-    --on-primary-container: #1a3a6e;
-    --text: #1a2230;
-    --muted: #6b7585;
-    --outline: #dde2e8;
-  }
+  /* Color tokens now live in ../tokens.css (M3 roles + back-compat aliases). */
   * { box-sizing: border-box; }
   body {
     margin: 0 auto;
-    font-family: 'Roboto', -apple-system, Segoe UI, Helvetica, Arial, sans-serif;
+    font-family: var(--md-font, 'Roboto', -apple-system, Segoe UI, Helvetica, Arial, sans-serif);
     background: var(--bg);
     color: var(--text);
     padding: 16px;
@@ -36,27 +11,29 @@
   }
   @media (min-width: 768px) { body { max-width: 720px; } }
   @media (min-width: 1024px) { body { max-width: 920px; } }
-  h1 { font-size: 1.7rem; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+  h1 { font: var(--md-headline-small); margin: 0; letter-spacing: -0.01em; }
   .header-row { display: flex; justify-content: space-between; align-items: center; }
   .header-actions { display: flex; gap: 8px; }
   .icon-btn {
     background: var(--card-high);
     border: none;
     border-radius: 50%;
-    width: 40px; height: 40px;
+    width: 48px; height: 48px;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer; color: var(--text); text-decoration: none;
+    transition: background 0.2s ease, transform 0.15s ease;
   }
-  .subtitle { color: var(--muted); font-size: 0.9rem; margin: 6px 0 16px; }
+  .icon-btn:hover { background: var(--md-surface-container-highest); }
+  .icon-btn:active { transform: scale(0.92); }
+  .subtitle { color: var(--muted); font: var(--md-body-medium); margin: 6px 0 16px; }
   .card {
     background: var(--card);
     border: 1px solid var(--outline);
-    border-radius: 20px;
+    border-radius: var(--md-shape-xl);
     padding: 16px;
     margin-bottom: 14px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    box-shadow: var(--md-elev-1);
   }
-  :root[data-theme="light"] .card { box-shadow: 0 2px 10px rgba(20,30,50,0.06); }
 
   .trip-form { display: flex; flex-direction: column; gap: 14px; }
   .field { display: flex; flex-direction: column; gap: 6px; }
@@ -74,7 +51,7 @@
     font-family: inherit;
     width: 100%;
     min-width: 0;
-    height: 44px;
+    height: 48px;
   }
   .field input[type="date"] { -webkit-appearance: none; appearance: none; }
   .field input[type="date"]::-webkit-date-and-time-value { text-align: left; }
@@ -99,16 +76,22 @@
   .field input:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
   .date-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .plan-btn {
-    border: none; border-radius: 14px; padding: 12px;
+    border: none; border-radius: var(--md-shape-full); min-height: 48px; padding: 12px 24px;
     background: var(--accent); color: var(--on-accent);
-    font-size: 0.95rem; font-weight: 700; cursor: pointer;
+    font: var(--md-label-large); cursor: pointer;
+    box-shadow: var(--md-elev-1);
+    transition: box-shadow 0.2s ease, transform 0.15s ease;
   }
+  .plan-btn:hover { box-shadow: var(--md-elev-2); }
+  .plan-btn:active { transform: scale(0.98); }
   .place-matches { display: flex; flex-wrap: wrap; gap: 8px; }
   .place-chip {
-    background: var(--card-high); border: 1px solid var(--outline);
-    border-radius: 12px; padding: 7px 12px; color: var(--text);
-    font-size: 0.82rem; cursor: pointer;
+    background: var(--card-high); border: 1px solid var(--md-outline);
+    border-radius: var(--md-shape-sm); min-height: 40px; padding: 8px 14px; color: var(--text);
+    font: var(--md-label-large); cursor: pointer;
+    transition: background 0.15s ease;
   }
+  .place-chip:hover { background: var(--md-surface-container-highest); }
   .place-chip.active { background: var(--primary-container); color: var(--on-primary-container); border-color: var(--accent); }
 
   .status { color: var(--muted); font-size: 0.88rem; margin: 4px 0 12px; min-height: 1em; text-align: center; }
