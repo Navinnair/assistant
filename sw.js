@@ -17,6 +17,9 @@ const ASSETS = [
   "./gym/",
   "./gym/index.html",
   "./gym/underdevelopment.webp",
+  "./settings/",
+  "./settings/index.html",
+  "./settings/app.js",
 ];
 
 self.addEventListener("install", (e) => {

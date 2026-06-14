@@ -1,15 +1,36 @@
 // Build version — keep in sync with the SW cache (my-planner-vN). Shown in the
 // footer so it's easy to confirm you're on the latest code.
-const APP_VERSION = "v21";
+const APP_VERSION = "v22";
+
+// Defaults — the original hardcoded Munich setup. The Settings page can
+// override home/office/usual-times via localStorage["planner_settings"].
+const DEFAULT_PLACES = {
+  home:   { label: "Riesenfeldstraße 10, München", lat: 48.1769745, lon: 11.5652835 },
+  office: { label: "Lenbachplatz 3, München",      lat: 48.1411534, lon: 11.5681888 },
+  officeArrival: { hour: 9, minute: 0 },
+  homeReturn:    { hour: 18, minute: 0 },
+};
+function loadPlannerSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem("planner_settings") || "null") || {};
+    return {
+      home: s.home || DEFAULT_PLACES.home,
+      office: s.office || DEFAULT_PLACES.office,
+      officeArrival: s.officeArrival || DEFAULT_PLACES.officeArrival,
+      homeReturn: s.homeReturn || DEFAULT_PLACES.homeReturn,
+    };
+  } catch (e) { return DEFAULT_PLACES; }
+}
+const PLACES = loadPlannerSettings();
 
 // --- Single place to tweak everything ---
 const CONFIG = {
-  // Fixed coordinates resolved via MVG location lookup.
-  home:   { lat: 48.1769745, lon: 11.5652835, name: "Riesenfeldstraße 10" },
-  office: { lat: 48.1411534, lon: 11.5681888, name: "Lenbachplatz 3" },
+  // Coordinates from Settings (default: the hardcoded Munich addresses).
+  home:   { lat: PLACES.home.lat,   lon: PLACES.home.lon,   name: PLACES.home.label },
+  office: { lat: PLACES.office.lat, lon: PLACES.office.lon, name: PLACES.office.label },
   // Usual times — the reference point when routing for "tomorrow".
-  officeArrival: { hour: 9, minute: 0 },
-  homeReturn:    { hour: 17, minute: 45 },
+  officeArrival: PLACES.officeArrival,
+  homeReturn:    PLACES.homeReturn,
   // Leave-by countdown color thresholds (minutes to leave).
   urgentMin: 4,
   soonMin: 8,
@@ -140,9 +161,15 @@ function fmtTime(iso) {
   return new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 }
 
+// Minutes → "45 min" or "1h 5m" once it passes an hour.
+function fmtMins(min) {
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60), m = min % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
+
 function fmtDuration(ms) {
-  const min = Math.round(ms / 60000);
-  return `${min} min`;
+  return fmtMins(Math.round(ms / 60000));
 }
 
 async function fetchWeather() {
@@ -643,7 +670,7 @@ function refreshRouteLive() {
       row.style.display = "";
       if (rel) {
         if (diff === 0) { rel.textContent = " · now"; rel.className = "route-rel " + leaveTier(0); }
-        else { rel.textContent = ` · in ${diff} min`; rel.className = "route-rel " + leaveTier(diff); }
+        else { rel.textContent = ` · in ${fmtMins(diff)}`; rel.className = "route-rel " + leaveTier(diff); }
       }
       const isChosen = !chosenMarked && dep === chosenDep;
       if (isChosen) chosenMarked = true;
@@ -842,11 +869,15 @@ function setToggle(id, on) {
   btn.setAttribute("aria-pressed", on ? "true" : "false");
 }
 
+// Trim a saved address label to its first part (street) for a compact title.
+function shortPlace(name) {
+  return (name || "").split(",")[0].trim();
+}
 function routesTitleFor(direction, dayIdx) {
   const label = dayIdx === 0 ? "Today" : "Tomorrow";
   return direction === "home"
-    ? `To Home (Riesenfeldstr. 10) — ${label}`
-    : `To Office (Lenbachpl. 3) — ${label}`;
+    ? `To Home (${shortPlace(CONFIG.home.name)}) — ${label}`
+    : `To Office (${shortPlace(CONFIG.office.name)}) — ${label}`;
 }
 
 // Update the compact day stepper: day name, real date, and arrow bounds.
@@ -998,14 +1029,12 @@ function updateLeaveBy() {
 
   function countdownText(diffMin) {
     if (diffMin <= 0) return ["Now!", leaveTier(diffMin)];
-    if (diffMin === 1) return ["1 min", leaveTier(diffMin)];
-    return [`${diffMin} min`, leaveTier(diffMin)];
+    return [fmtMins(diffMin), leaveTier(diffMin)];
   }
 
   function leaveCountdownText(diffMin) {
     if (diffMin <= 0) return ["Leave now!", leaveTier(diffMin)];
-    if (diffMin === 1) return ["Leave in 1 min", leaveTier(diffMin)];
-    return [`Leave in ${diffMin} mins`, leaveTier(diffMin)];
+    return [`Leave in ${fmtMins(diffMin)}`, leaveTier(diffMin)];
   }
 
   const [leaveText, leaveLevel] = leaveCountdownText(leaveDiff);
@@ -1248,7 +1277,7 @@ function renderUpdated() {
   const el = document.getElementById("updated");
   if (!lastUpdatedAt) { el.textContent = ""; return; }
   const mins = Math.floor((Date.now() - lastUpdatedAt) / 60000);
-  const when = mins < 1 ? "Updated just now" : `Updated ${mins} min ago`;
+  const when = mins < 1 ? "Updated just now" : `Updated ${fmtMins(mins)} ago`;
   el.textContent = `${when} · ${APP_VERSION}`;
   el.classList.toggle("stale", mins >= 6);
 }
