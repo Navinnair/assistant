@@ -101,14 +101,26 @@ function fmtDayDate(isoDate) {
   document.getElementById("start").min = ymd(today);
 })();
 
+// European country codes (incl. transcontinental with European territory).
+const EUROPE_CC = new Set([
+  "AL","AD","AT","BY","BE","BA","BG","HR","CY","CZ","DK","EE","FI","FR","DE",
+  "GR","HU","IS","IE","IT","XK","LV","LI","LT","LU","MT","MD","MC","ME","NL",
+  "MK","NO","PL","PT","RO","RU","SM","RS","SK","SI","ES","SE","CH","UA","GB",
+  "VA","TR","GI","FO","IM","JE","GG",
+]);
+
 async function geocode(name) {
-  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=5&language=en`;
+  // Ask for more, then keep only European matches.
+  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=10&language=en`;
   const d = await fetch(url).then((r) => r.json());
-  return (d.results || []).map((r) => ({
-    lat: r.latitude, lon: r.longitude,
-    label: [r.name, r.admin1, r.country].filter(Boolean).join(", "),
-    short: r.name,
-  }));
+  return (d.results || [])
+    .filter((r) => EUROPE_CC.has(r.country_code))
+    .slice(0, 5)
+    .map((r) => ({
+      lat: r.latitude, lon: r.longitude,
+      label: [r.name, r.admin1, r.country].filter(Boolean).join(", "),
+      short: r.name,
+    }));
 }
 
 async function fetchTripWeather(lat, lon, start, end) {
@@ -138,7 +150,7 @@ async function planTrip(e) {
   let places;
   try { places = await geocode(dest); }
   catch (err) { status("Couldn't reach the location service."); return false; }
-  if (!places.length) { status(`No place found for "${dest}".`); return false; }
+  if (!places.length) { status(`No European place found for "${dest}".`); return false; }
 
   // If several matches, let the user pick; default to the first.
   if (places.length > 1) renderPlaceChips(places, start, end);
