@@ -10,16 +10,16 @@
 <style>
   /* Color tokens (Material 3 shape/spacing, professional slate/blue palette) */
   :root {
-    --bg: #0b0e14;
-    --card: #151920;
-    --card-high: #1e2430;
+    --bg: #0a0c10;
+    --card: #1b212c;
+    --card-high: #262d3a;
     --accent: #5b9dff;
     --on-accent: #ffffff;
     --primary-container: #1f3a5f;
     --on-primary-container: #cfe3ff;
     --text: #e7eaf0;
     --muted: #8b95a5;
-    --outline: #2a313d;
+    --outline: #323a48;
   }
   :root[data-theme="light"] {
     --bg: #f7f8fa;
@@ -75,10 +75,14 @@
   .subtitle { color: var(--muted); font-size: 0.875rem; margin-bottom: 16px; }
   .card {
     background: var(--card);
-    border: none;
+    border: 1px solid var(--outline);
     border-radius: 24px;
     padding: 16px 20px;
     margin-bottom: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  }
+  :root[data-theme="light"] .card {
+    box-shadow: 0 2px 10px rgba(20,30,50,0.06);
   }
   .card h2 {
     font-size: 0.8125rem;
@@ -90,7 +94,7 @@
   }
   .weather-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 12px;
   }
   .weather-col {
@@ -180,11 +184,30 @@
     color: var(--on-primary-container);
     margin-top: 2px;
   }
-  .leave-countdown.urgent {
+  .leave-countdown.highlight {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--accent);
+    margin-top: 4px;
+    white-space: nowrap;
+  }
+  .leave-countdown.urgent, .leave-countdown.highlight.urgent {
     color: #ffb4ab;
   }
-  :root[data-theme="light"] .leave-countdown.urgent {
+  .leave-countdown.soon, .leave-countdown.highlight.soon {
+    color: #ffd479;
+  }
+  .leave-countdown.ok, .leave-countdown.highlight.ok {
+    color: #8bd99f;
+  }
+  :root[data-theme="light"] .leave-countdown.urgent, :root[data-theme="light"] .leave-countdown.highlight.urgent {
     color: #ba1a1a;
+  }
+  :root[data-theme="light"] .leave-countdown.soon, :root[data-theme="light"] .leave-countdown.highlight.soon {
+    color: #8a5d00;
+  }
+  :root[data-theme="light"] .leave-countdown.ok, :root[data-theme="light"] .leave-countdown.highlight.ok {
+    color: #1e6b3a;
   }
   .leave-sub {
     text-align: center;
@@ -235,6 +258,18 @@
     to { opacity: 1; transform: translateY(0); }
   }
   .fade-in { animation: fadeIn 0.35s ease; }
+  .show-more {
+    width: 100%;
+    margin-top: 8px;
+    padding: 10px;
+    border: 1px solid var(--outline);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--accent);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
 </style>
 </head>
 <body>
@@ -268,13 +303,13 @@
   </div>
 
   <div class="card">
-    <h2 id="toOfficeTitle">To Office (Lenbachpl. 3) — Today</h2>
-    <div id="toOffice" class="loading">Loading...</div>
-  </div>
-
-  <div class="card">
-    <h2 id="toHomeTitle">To Home (Riesenfeldstr. 10) — Today</h2>
-    <div id="toHome" class="loading">Loading...</div>
+    <div class="day-toggle">
+      <button id="btnDirHome" class="active" onclick="selectDirection('home')">To Home</button>
+      <button id="btnDirOffice" onclick="selectDirection('office')">To Office</button>
+    </div>
+    <h2 id="routesTitle">To Home (Riesenfeldstr. 10) — Today</h2>
+    <div id="routesList" class="loading">Loading...</div>
+    <button id="showMoreBtn" class="show-more" style="display:none" onclick="showMoreRoutes()">Show 5 more</button>
   </div>
 
   <div class="updated" id="updated"></div>
@@ -370,6 +405,38 @@ async function fetchRoutes(origin, dest, dateTime) {
   return res.json();
 }
 
+// MVG sometimes returns fewer than 10 routes for a given time (e.g. only
+// the next few unique departures). Top up by re-querying from just after
+// the last departure we already have, until we hit 10 or stop gaining any.
+async function fetchRoutesPadded(origin, dest, dateTime) {
+  let routes = await fetchRoutes(origin, dest, dateTime);
+  let attempts = 0;
+  while (routes.length < 10 && routes.length > 0 && attempts < 3) {
+    const last = routes[routes.length - 1];
+    const lastDep = new Date(last.parts[0].from.plannedDeparture);
+    lastDep.setMinutes(lastDep.getMinutes() + 1);
+    let more;
+    try {
+      more = await fetchRoutes(origin, dest, lastDep);
+    } catch (e) {
+      break;
+    }
+    const seen = new Set(routes.map(r => r.parts[0].from.plannedDeparture + (r.parts[0].line ? r.parts[0].line.label : "")));
+    let gained = 0;
+    for (const r of more) {
+      const key = r.parts[0].from.plannedDeparture + (r.parts[0].line ? r.parts[0].line.label : "");
+      if (!seen.has(key)) {
+        seen.add(key);
+        routes.push(r);
+        gained++;
+      }
+    }
+    if (gained === 0) break;
+    attempts++;
+  }
+  return routes.slice(0, 10);
+}
+
 // dayIdx: 0 = today, 1 = tomorrow. refHour/refMinute = usual departure time.
 // Today always shows next available departures from now (so it works
 // whether you check before or after your usual commute time).
@@ -384,17 +451,49 @@ function routingDateTime(dayIdx, refHour, refMinute) {
   return new Date();
 }
 
-function renderWeather(data) {
+// Reduce an hourly field over waking hours (8am-9pm) for the given day —
+// e.g. min temperature or max windspeed/rain chance, since overnight
+// conditions don't affect what you wear or whether you need an umbrella.
+function daytimeHourlyReduce(data, dayIdx, field, fn, init) {
+  const targetDate = data.daily.time[dayIdx];
+  let result = init;
+  for (let i = 0; i < data.hourly.time.length; i++) {
+    const [date, time] = data.hourly.time[i].split("T");
+    if (date !== targetDate) continue;
+    const hour = parseInt(time.split(":")[0], 10);
+    if (hour >= 8 && hour <= 21) {
+      result = fn(result, data.hourly[field][i]);
+    }
+  }
+  return result;
+}
+
+// Max rain chance during waking hours (8am-9pm) for the given day —
+// used for the umbrella suggestion since overnight rain doesn't matter.
+function daytimeRainChance(data, dayIdx) {
+  return daytimeHourlyReduce(data, dayIdx, "precipitation_probability", Math.max, 0);
+}
+
+function daytimeMinTemp(data, dayIdx) {
+  return daytimeHourlyReduce(data, dayIdx, "temperature_2m", Math.min, Infinity);
+}
+
+function daytimeMaxWind(data, dayIdx) {
+  return daytimeHourlyReduce(data, dayIdx, "windspeed_10m", Math.max, 0);
+}
+
+function renderWeather(data, dayIdx) {
   const days = ["Today", "Tomorrow"];
-  let html = `<div class="weather-grid">`;
-  for (let i = 0; i < 2; i++) {
-    const [label, category] = weatherInfo(data.daily.weathercode[i]);
-    const max = Math.round(data.daily.temperature_2m_max[i]);
-    const min = Math.round(data.daily.temperature_2m_min[i]);
-    const rain = data.daily.precipitation_probability_max[i];
-    const wind = Math.round(data.daily.windspeed_10m_max[i]);
-    const umbrella = rain >= 30 ? "☔ Umbrella: Yes" : "🚫☔ Umbrella: No";
-    html += `
+  const i = dayIdx || 0;
+  const [label, category] = weatherInfo(data.daily.weathercode[i]);
+  const max = Math.round(data.daily.temperature_2m_max[i]);
+  const min = Math.round(data.daily.temperature_2m_min[i]);
+  const rain = data.daily.precipitation_probability_max[i];
+  const wind = Math.round(data.daily.windspeed_10m_max[i]);
+  const daytimeRain = daytimeRainChance(data, i);
+  const umbrella = daytimeRain >= 30 ? "☔ Umbrella: Yes" : "🚫☔ Umbrella: No";
+  const html = `
+    <div class="weather-grid">
       <div class="weather-col">
         <div class="weather-day">${days[i]}</div>
         <div class="weather-icon">${weatherIcon(category)}</div>
@@ -402,9 +501,8 @@ function renderWeather(data) {
         <div class="weather-detail">${label}</div>
         <div class="weather-detail">🌧️ ${rain}% · 💨 ${wind} km/h</div>
         <div class="weather-umbrella">${umbrella}</div>
-      </div>`;
-  }
-  html += `</div>`;
+      </div>
+    </div>`;
   const el = document.getElementById("weather");
   el.innerHTML = html;
   flashIn(el);
@@ -412,9 +510,9 @@ function renderWeather(data) {
 }
 
 function renderOutfit(data, dayIdx) {
-  const rainProb = data.daily.precipitation_probability_max[dayIdx];
-  const wind = data.daily.windspeed_10m_max[dayIdx];
-  const minTemp = data.daily.temperature_2m_min[dayIdx];
+  const rainProb = daytimeRainChance(data, dayIdx);
+  const wind = daytimeMaxWind(data, dayIdx);
+  const minTemp = daytimeMinTemp(data, dayIdx);
 
   let icon, text, notes = [];
 
@@ -475,14 +573,13 @@ function summarizeRoute(route) {
   return { departure, arrival, durationMs, legs };
 }
 
-function renderRoutes(elementId, routes) {
-  const top = routes.slice(0, 4);
-  if (!top.length) {
+function renderRoutes(elementId, summaries, count) {
+  if (!summaries.length) {
     document.getElementById(elementId).innerHTML = `<div class="loading">No routes found</div>`;
-    return [];
+    return;
   }
-  const summaries = top.map(r => summarizeRoute(r));
-  const html = summaries.map(s => {
+  const shown = summaries.slice(0, count);
+  const html = shown.map(s => {
     const legsHtml = s.legs.length
       ? s.legs.map(l => `
           <div class="route-leg">
@@ -502,11 +599,29 @@ function renderRoutes(elementId, routes) {
   const el = document.getElementById(elementId);
   el.innerHTML = html;
   flashIn(el);
-  return summaries;
+
+  const moreBtn = document.getElementById("showMoreBtn");
+  moreBtn.style.display = summaries.length > count ? "" : "none";
+}
+
+// Between 13:00-20:00 you're heading home; otherwise you're heading to the office.
+function defaultDirection() {
+  const h = new Date().getHours();
+  return (h >= 13 && h < 20) ? "home" : "office";
 }
 
 let weatherData = null;
 let selectedDay = 0; // 0 = today, 1 = tomorrow
+let selectedDirection = defaultDirection(); // "home" or "office"
+let visibleCount = 5;
+let routeCache = { home: null, office: null };
+
+function routesTitleFor(direction, dayIdx) {
+  const label = dayIdx === 0 ? "Today" : "Tomorrow";
+  return direction === "home"
+    ? `To Home (Riesenfeldstr. 10) — ${label}`
+    : `To Office (Lenbachpl. 3) — ${label}`;
+}
 
 function selectDay(dayIdx) {
   selectedDay = dayIdx;
@@ -514,19 +629,45 @@ function selectDay(dayIdx) {
   document.getElementById("btnTomorrow").classList.toggle("active", dayIdx === 1);
   const label = dayIdx === 0 ? "Today" : "Tomorrow";
   document.getElementById("outfitTitle").textContent = `Outfit for ${label}`;
-  document.getElementById("toOfficeTitle").textContent = `To Office (Lenbachpl. 3) — ${label}`;
-  document.getElementById("toHomeTitle").textContent = `To Home (Riesenfeldstr. 10) — ${label}`;
+  document.getElementById("routesTitle").textContent = routesTitleFor(selectedDirection, dayIdx);
 
-  if (weatherData) renderOutfit(weatherData, dayIdx);
+  if (weatherData) {
+    renderWeather(weatherData, dayIdx);
+    renderOutfit(weatherData, dayIdx);
+  }
   loadRoutes(dayIdx);
+}
+
+function selectDirection(direction) {
+  selectedDirection = direction;
+  visibleCount = 5;
+  document.getElementById("btnDirHome").classList.toggle("active", direction === "home");
+  document.getElementById("btnDirOffice").classList.toggle("active", direction === "office");
+  document.getElementById("routesTitle").textContent = routesTitleFor(direction, selectedDay);
+
+  const cached = routeCache[direction];
+  if (cached) {
+    renderRoutes("routesList", cached, visibleCount);
+  } else {
+    document.getElementById("routesList").innerHTML = '<div class="loading">Loading...</div>';
+    document.getElementById("showMoreBtn").style.display = "none";
+  }
+}
+
+function showMoreRoutes() {
+  visibleCount = 10;
+  const cached = routeCache[selectedDirection];
+  if (cached) renderRoutes("routesList", cached, visibleCount);
 }
 
 let officeSummaries = [];
 
 // Walking time from home to the first station/stop
-const WALK_TO_STATION_MIN = 5;
-// Below this many minutes-to-leave, the countdown is shown as urgent
+const WALK_TO_STATION_MIN = 7;
+// Below this many minutes-to-leave, the countdown is shown as urgent (red)
 const URGENT_THRESHOLD_MIN = 4;
+// Below this many minutes-to-leave (but above urgent), shown as soon (amber)
+const SOON_THRESHOLD_MIN = 8;
 
 function updateLeaveBy() {
   const card = document.getElementById("leaveByCard");
@@ -555,14 +696,27 @@ function updateLeaveBy() {
   const leaveDiff = Math.round((leaveTime - now) / 60000);
   const departDiff = Math.round((departTime - now) / 60000);
 
-  function countdownText(diffMin) {
-    if (diffMin <= 0) return ["Now!", true];
-    if (diffMin === 1) return ["1 min", true];
-    return [`${diffMin} min`, diffMin <= URGENT_THRESHOLD_MIN];
+  // Priority level for color-coding: "urgent" (red), "soon" (amber), "ok" (green)
+  function priorityLevel(diffMin) {
+    if (diffMin <= URGENT_THRESHOLD_MIN) return "urgent";
+    if (diffMin <= SOON_THRESHOLD_MIN) return "soon";
+    return "ok";
   }
 
-  const [leaveText, leaveUrgent] = countdownText(leaveDiff);
-  const [departText, departUrgent] = countdownText(departDiff);
+  function countdownText(diffMin) {
+    if (diffMin <= 0) return ["Now!", priorityLevel(diffMin)];
+    if (diffMin === 1) return ["1 min", priorityLevel(diffMin)];
+    return [`${diffMin} min`, priorityLevel(diffMin)];
+  }
+
+  function leaveCountdownText(diffMin) {
+    if (diffMin <= 0) return ["Leave now!", priorityLevel(diffMin)];
+    if (diffMin === 1) return ["Leave in 1 min", priorityLevel(diffMin)];
+    return [`Leave in ${diffMin} mins`, priorityLevel(diffMin)];
+  }
+
+  const [leaveText, leaveLevel] = leaveCountdownText(leaveDiff);
+  const [departText, departLevel] = countdownText(departDiff);
 
   const el = document.getElementById("leaveBy");
   el.innerHTML = `
@@ -570,12 +724,12 @@ function updateLeaveBy() {
       <div class="leave-col">
         <div class="leave-label">Leave home</div>
         <div class="leave-clock">${fmtTime(leaveTime.toISOString())}</div>
-        <div class="leave-countdown${leaveUrgent ? " urgent" : ""}">${leaveText}</div>
+        <div class="leave-countdown highlight ${leaveLevel}">${leaveText}</div>
       </div>
       <div class="leave-col">
         <div class="leave-label">Departure (${chosen.legs[0] ? chosen.legs[0].line : "walk"})</div>
         <div class="leave-clock">${fmtTime(chosen.departure)}</div>
-        <div class="leave-countdown${departUrgent ? " urgent" : ""}">${departText}</div>
+        <div class="leave-countdown ${departLevel}">${departText}</div>
       </div>
     </div>
     <div class="leave-sub">${WALK_TO_STATION_MIN} min walk to station</div>
@@ -584,26 +738,44 @@ function updateLeaveBy() {
 }
 
 async function loadRoutes(dayIdx) {
-  document.getElementById("toOffice").innerHTML = '<div class="loading">Loading...</div>';
-  document.getElementById("toHome").innerHTML = '<div class="loading">Loading...</div>';
+  routeCache = { home: null, office: null };
   officeSummaries = [];
+  visibleCount = 5;
   updateLeaveBy();
+  document.getElementById("routesList").innerHTML = '<div class="loading">Loading...</div>';
+  document.getElementById("showMoreBtn").style.display = "none";
 
-  try {
-    const officeTime = routingDateTime(dayIdx, 9, 0);
-    const officeRoutes = await fetchRoutes(HOME, OFFICE, officeTime);
-    officeSummaries = renderRoutes("toOffice", officeRoutes);
-    updateLeaveBy();
-  } catch (e) {
-    document.getElementById("toOffice").innerHTML = `<div class="loading">Failed to load routes</div>`;
-  }
+  const fetchHome = async () => {
+    try {
+      const homeTime = routingDateTime(dayIdx, 17, 45);
+      const homeRoutes = await fetchRoutesPadded(OFFICE, HOME, homeTime);
+      routeCache.home = homeRoutes.map(r => summarizeRoute(r));
+      if (selectedDirection === "home") renderRoutes("routesList", routeCache.home, visibleCount);
+    } catch (e) {
+      if (selectedDirection === "home") document.getElementById("routesList").innerHTML = `<div class="loading">Failed to load routes</div>`;
+    }
+  };
 
-  try {
-    const homeTime = routingDateTime(dayIdx, 17, 45);
-    const homeRoutes = await fetchRoutes(OFFICE, HOME, homeTime);
-    renderRoutes("toHome", homeRoutes);
-  } catch (e) {
-    document.getElementById("toHome").innerHTML = `<div class="loading">Failed to load routes</div>`;
+  const fetchOffice = async () => {
+    try {
+      const officeTime = routingDateTime(dayIdx, 9, 0);
+      const officeRoutes = await fetchRoutesPadded(HOME, OFFICE, officeTime);
+      routeCache.office = officeRoutes.map(r => summarizeRoute(r));
+      officeSummaries = routeCache.office;
+      updateLeaveBy();
+      if (selectedDirection === "office") renderRoutes("routesList", routeCache.office, visibleCount);
+    } catch (e) {
+      if (selectedDirection === "office") document.getElementById("routesList").innerHTML = `<div class="loading">Failed to load routes</div>`;
+    }
+  };
+
+  // Load the currently-selected direction first so it appears sooner.
+  if (selectedDirection === "home") {
+    await fetchHome();
+    await fetchOffice();
+  } else {
+    await fetchOffice();
+    await fetchHome();
   }
 
   document.getElementById("updated").textContent = "Updated " + new Date().toLocaleTimeString("de-DE");
@@ -654,7 +826,7 @@ async function loadAll() {
   const cached = loadCachedWeather();
   if (cached) {
     weatherData = cached.data;
-    renderWeather(weatherData);
+    renderWeather(weatherData, selectedDay);
     renderOutfit(weatherData, selectedDay);
   } else {
     document.getElementById("outfit").innerHTML = '<div class="loading">Loading...</div>';
@@ -664,7 +836,7 @@ async function loadAll() {
   try {
     weatherData = await fetchWeather();
     saveCachedWeather(weatherData);
-    renderWeather(weatherData);
+    renderWeather(weatherData, selectedDay);
     renderOutfit(weatherData, selectedDay);
   } catch (e) {
     if (!cached) {
@@ -675,6 +847,10 @@ async function loadAll() {
 
   await loadRoutes(selectedDay);
 }
+
+document.getElementById("btnDirHome").classList.toggle("active", selectedDirection === "home");
+document.getElementById("btnDirOffice").classList.toggle("active", selectedDirection === "office");
+document.getElementById("routesTitle").textContent = routesTitleFor(selectedDirection, selectedDay);
 
 loadAll();
 
