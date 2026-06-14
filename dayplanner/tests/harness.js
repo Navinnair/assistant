@@ -20,7 +20,7 @@ function fakeEl() {
 
 const sandbox = {
   console,
-  Date, Math, JSON, Promise, Object, Array, parseInt, parseFloat, encodeURIComponent, isNaN,
+  Date, Math, JSON, Promise, Object, Array, parseInt, parseFloat, encodeURIComponent, isNaN, URLSearchParams,
   setInterval: () => 0,
   setTimeout: () => 0,
   fetch: () => new Promise(() => {}), // never resolves — loadAll() just suspends

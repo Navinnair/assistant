@@ -616,7 +616,17 @@ function refreshRouteLive() {
 
 let weatherData = null;
 let selectedDay = 0; // 0 = today, 1 = tomorrow
-let selectedDirection = "office"; // "home" or "office" — master toggle, defaults to office
+// Morning you're heading to the office; from ~13:00 you're heading home.
+function defaultDirection() {
+  const h = new Date().getHours();
+  return h >= 13 && h < 24 ? "home" : "office";
+}
+// A PWA shortcut (?to=office|home) overrides the time-based default.
+function initialDirection() {
+  const to = new URLSearchParams(window.location.search).get("to");
+  return to === "home" || to === "office" ? to : defaultDirection();
+}
+let selectedDirection = initialDirection(); // "home" or "office" — master toggle
 let visibleCount = 5;
 let routeCache = { home: null, office: null };
 let enriched = { home: false, office: false }; // live delays applied this load?
