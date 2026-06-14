@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#2f6fed"/>
+  <!-- briefcase: office commute -->
+  <g fill="none" stroke="#ffffff" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="116" y="190" width="280" height="200" rx="28" fill="rgba(255,255,255,0.08)"/>
+    <path d="M206 190 v-26 a26 26 0 0 1 26 -26 h48 a26 26 0 0 1 26 26 v26"/>
+    <path d="M116 268 h280"/>
+  </g>
+  <!-- sun accent in corner -->
+  <circle cx="372" cy="150" r="34" fill="#ffd166"/>
+</svg>
