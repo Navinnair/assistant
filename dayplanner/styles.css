@@ -395,8 +395,8 @@
     background: var(--accent);
   }
   .leg-stop .dot.end {
-    background: var(--card-high);
-    border: 2px solid var(--outline);
+    background: var(--card);
+    border: 2px solid var(--accent);
   }
   .route-walk {
     font-size: 0.75rem;
@@ -552,6 +552,8 @@
   .skel-strip > div { flex: 1; height: 86px; border-radius: 12px; }
   .updated { text-align: center; color: var(--muted); font-size: 0.75rem; margin-top: 8px; }
   .updated.stale { color: #ffb454; }
+  :root[data-theme="light"] .updated.stale,
+  :root[data-theme="light"] .stale-note { color: #8a5d00; }
   .day-toggle {
     display: flex;
     margin-bottom: 14px;
@@ -561,6 +563,10 @@
   }
   .day-toggle button {
     flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     padding: 10px;
     border: none;
     border-right: 1px solid var(--outline);
@@ -571,6 +577,7 @@
     color: var(--text);
     transition: background 0.2s ease, color 0.2s ease;
   }
+  .btn-ic { flex: none; }
   .day-toggle button:last-child { border-right: none; }
   .day-toggle button.active {
     background: var(--primary-container);
