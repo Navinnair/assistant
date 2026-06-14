@@ -1,5 +1,5 @@
 // Bump this version on each deploy to refresh the cached app shell.
-const CACHE = "my-planner-v4";
+const CACHE = "my-planner-v5";
 const ASSETS = [
   "./",
   "./index.html",
@@ -12,12 +12,12 @@ const ASSETS = [
 ];
 
 self.addEventListener("install", (e) => {
-  // No auto-skipWaiting: a new version waits until the page's "Refresh" toast
-  // (or all tabs close), so we never swap code out from under an open tab.
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
+  // Activate the new version immediately so updates can never get stuck behind
+  // an old worker (the page reloads on controllerchange).
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
 
-// The page tells us to activate now when the user taps "Refresh".
+// Belt-and-suspenders: the page can also ask us to activate.
 self.addEventListener("message", (e) => {
   if (e.data === "SKIP_WAITING") self.skipWaiting();
 });
@@ -36,9 +36,11 @@ self.addEventListener("fetch", (e) => {
   // Cross-origin (weather + MVG APIs, fonts) → straight to network.
   if (url.origin !== location.origin) return;
 
-  // Page navigations → network-first so deploys show immediately, fall back
-  // to cache when offline.
-  if (e.request.mode === "navigate") {
+  // App shell (page + its code) → network-first so a deploy always wins when
+  // online; fall back to cache offline. This avoids fresh-HTML/stale-CSS skew.
+  const isShell =
+    e.request.mode === "navigate" || /\.(?:html|css|js|json)$/.test(url.pathname);
+  if (isShell) {
     e.respondWith(
       fetch(e.request)
         .then((res) => {
@@ -51,6 +53,6 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // Static same-origin assets → cache-first.
+  // Other static assets (icons) → cache-first.
   e.respondWith(caches.match(e.request).then((c) => c || fetch(e.request)));
 });

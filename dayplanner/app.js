@@ -1034,9 +1034,12 @@ function showUpdateToast(reg) {
 
 if ("serviceWorker" in navigator) {
   let reloading = false;
-  // The new SW took control (after SKIP_WAITING) — load the fresh code once.
+  // Only auto-reload when an EXISTING controller is replaced (a real update).
+  // On a first-ever install the controller goes null→worker via clients.claim;
+  // don't reload then.
+  const hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (reloading) return;
+    if (reloading || !hadController) return;
     reloading = true;
     window.location.reload();
   });
