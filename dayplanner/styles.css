@@ -589,6 +589,17 @@
   .skel-strip > div { flex: 1; height: 86px; border-radius: 12px; }
   .updated { text-align: center; color: var(--muted); font-size: 0.75rem; margin-top: 8px; }
   .updated.stale { color: #ffb454; }
+  .footer-actions { text-align: center; margin: 4px 0 16px; }
+  .force-update {
+    background: transparent;
+    border: 1px solid var(--outline);
+    border-radius: 10px;
+    padding: 5px 12px;
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
   :root[data-theme="light"] .updated.stale,
   :root[data-theme="light"] .stale-note { color: #8a5d00; }
   .day-toggle {

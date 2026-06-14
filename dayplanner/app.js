@@ -1,6 +1,6 @@
 // Build version — keep in sync with the SW cache (my-planner-vN). Shown in the
 // footer so it's easy to confirm you're on the latest code.
-const APP_VERSION = "v15";
+const APP_VERSION = "v16";
 
 // --- Single place to tweak everything ---
 const CONFIG = {
@@ -1064,6 +1064,22 @@ function toggleHourly() {
   setHourly(open);
 }
 setHourly(localStorage.getItem("hourly_open") === "1"); // default collapsed
+
+// Nuke all caches + service workers and reload fresh. Escape hatch for when a
+// stale service worker won't let go of old code.
+async function forceUpdate() {
+  try {
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+    if (window.caches) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+  } catch (e) {}
+  location.reload();
+}
 
 // --- One-time discoverability hints for the hidden gestures ---
 function dismissHints() {
