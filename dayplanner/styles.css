@@ -187,18 +187,32 @@
   .route:last-child { margin-bottom: 0; }
   .route { cursor: pointer; transition: background 0.15s ease; }
   .route:hover, .route:focus-visible { background: var(--card); outline: none; }
-  .route-ext {
-    float: right;
-    color: var(--accent);
-    font-size: 1rem;
-    opacity: 0.85;
-    cursor: pointer;
-    padding: 2px 6px;
-    margin: -2px -4px 0 0;
-    border-radius: var(--md-shape-sm);
-    line-height: 1;
+  /* "Open in Google Maps" — labeled pill at the bottom of each route. */
+  .route-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
   }
-  .route-ext:hover { opacity: 1; background: color-mix(in srgb, var(--md-primary) 12%, transparent); }
+  .route-map {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 40px;
+    padding: 8px 16px;
+    border: 1px solid color-mix(in srgb, var(--md-primary) 45%, var(--outline));
+    border-radius: var(--md-shape-full);
+    background: transparent;
+    color: var(--accent);
+    font: var(--md-label-large);
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .route-map svg { display: block; }
+  .route-map:hover, .route-map:focus-visible {
+    background: color-mix(in srgb, var(--md-primary) 12%, transparent);
+    outline: none;
+  }
+  .route-map:active { background: color-mix(in srgb, var(--md-primary) 20%, transparent); }
   /* The departure the Time-to-Go card picked. */
   .route.chosen {
     border-left-color: var(--accent);

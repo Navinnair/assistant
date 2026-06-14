@@ -1,6 +1,6 @@
 // Build version — keep in sync with the SW cache (my-planner-vN). Shown in the
 // footer so it's easy to confirm you're on the latest code.
-const APP_VERSION = "v23";
+const APP_VERSION = "v24";
 
 // Defaults — the original hardcoded Munich setup. The Settings page can
 // override home/office/usual-times via localStorage["planner_settings"].
@@ -618,10 +618,16 @@ function renderRoutes(elementId, summaries, count) {
       : delayM > 0 ? `<span class="delay-tag">+${delayM} late</span>` : "";
     return `
       <div class="route" data-departure="${s.departure}" data-delay="${delayM}" onclick="selectRoute('${s.departure}')" onkeydown="if(event.key==='Enter')selectRoute('${s.departure}')" role="button" tabindex="0" title="Pick this departure for Time to Go">
-        <div class="route-time"><span class="route-num"></span>${fmtTime(s.departure)} → ${fmtTime(s.arrival)} (${fmtDuration(s.durationMs)})${delayTag}<span class="route-rel"></span><span class="route-ext" role="button" tabindex="0" title="Open in Google Maps" aria-label="Open in Google Maps" onclick="event.stopPropagation();openRoute()" onkeydown="if(event.key==='Enter'){event.stopPropagation();openRoute()}">↗</span></div>
+        <div class="route-time"><span class="route-num"></span>${fmtTime(s.departure)} → ${fmtTime(s.arrival)} (${fmtDuration(s.durationMs)})${delayTag}<span class="route-rel"></span></div>
         ${alertHtml}
         ${walkHtml}
         ${legsHtml}
+        <div class="route-actions">
+          <button type="button" class="route-map" title="Open in Google Maps" aria-label="Open in Google Maps" onclick="event.stopPropagation();openRoute()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            Open in Maps
+          </button>
+        </div>
       </div>`;
   }).join("");
   const el = document.getElementById(elementId);
