@@ -28,51 +28,75 @@
     padding: 16px;
     max-width: 480px;
     margin: 0 auto;
+    -webkit-font-smoothing: antialiased;
   }
-  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  h1 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin: 0 0 4px;
+    letter-spacing: -0.02em;
+  }
   .header-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
   }
+  .header-actions {
+    display: flex;
+    gap: 8px;
+  }
   .theme-toggle {
     background: var(--card);
-    border: none;
-    border-radius: 8px;
-    padding: 8px 10px;
+    border: 1px solid rgba(128,128,128,0.15);
+    border-radius: 10px;
+    padding: 8px 12px;
     font-size: 1.1rem;
     cursor: pointer;
     color: var(--text);
+    transition: transform 0.15s ease;
   }
+  .theme-toggle:active { transform: scale(0.92); }
   .subtitle { color: var(--muted); font-size: 0.85rem; margin-bottom: 16px; }
   .card {
     background: var(--card);
-    border-radius: 12px;
-    padding: 14px 16px;
+    border: 1px solid rgba(128,128,128,0.1);
+    border-radius: 16px;
+    padding: 16px 18px;
     margin-bottom: 14px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
   }
   .card h2 {
-    font-size: 1rem;
-    margin: 0 0 10px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin: 0 0 12px;
     color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
-  .weather-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
+  .weather-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
   }
-  .weather-row:last-child { margin-bottom: 0; }
-  .weather-day { font-weight: 600; }
-  .weather-detail { color: var(--muted); font-size: 0.85rem; }
-  .weather-umbrella { font-size: 0.85rem; font-weight: 600; margin-top: 2px; }
-  .big-temp { font-size: 1.3rem; font-weight: 700; }
-  .outfit-icon { font-size: 2.2rem; text-align: center; margin-bottom: 6px; }
-  .outfit-text { text-align: center; font-size: 1rem; font-weight: 600; }
+  .weather-col {
+    text-align: center;
+    padding: 12px 8px;
+    border-radius: 12px;
+    background: rgba(128,128,128,0.06);
+  }
+  .weather-icon { margin: 0 auto 4px; }
+  .weather-day { font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; }
+  .weather-detail { color: var(--muted); font-size: 0.78rem; margin-top: 4px; }
+  .weather-umbrella { font-size: 0.8rem; font-weight: 600; margin-top: 6px; }
+  .big-temp { font-size: 1.4rem; font-weight: 800; margin-top: 2px; }
+  .outfit-icon { font-size: 2.6rem; text-align: center; margin-bottom: 6px; }
+  .outfit-text { text-align: center; font-size: 1.05rem; font-weight: 700; }
   .outfit-notes { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 6px; }
   .route {
     border-left: 3px solid var(--accent);
-    padding: 6px 10px;
+    border-radius: 0 10px 10px 0;
+    background: rgba(128,128,128,0.05);
+    padding: 8px 12px;
     margin-bottom: 8px;
   }
   .route:last-child { margin-bottom: 0; }
@@ -102,17 +126,23 @@
   .route-station {
     color: var(--text);
   }
+  #leaveByCard {
+    background: linear-gradient(135deg, var(--accent), #6a5cff);
+    border: none;
+  }
+  #leaveByCard h2 { color: rgba(255,255,255,0.85); }
   .leave-countdown {
     text-align: center;
-    font-size: 1.8rem;
+    font-size: 2.2rem;
     font-weight: 800;
+    color: #fff;
   }
   .leave-countdown.urgent {
-    color: #ff6b6b;
+    color: #ffe066;
   }
   .leave-sub {
     text-align: center;
-    color: var(--muted);
+    color: rgba(255,255,255,0.85);
     font-size: 0.85rem;
     margin-top: 4px;
   }
@@ -126,50 +156,49 @@
     color: #4dff88;
     margin-left: 4px;
   }
-  .refresh {
-    width: 100%;
-    padding: 12px;
-    background: var(--accent);
-    color: #111;
-    border: none;
-    border-radius: 10px;
-    font-size: 1rem;
-    font-weight: 700;
-    cursor: pointer;
-    margin-bottom: 14px;
-  }
   .loading { color: var(--muted); font-size: 0.9rem; }
   .updated { text-align: center; color: var(--muted); font-size: 0.75rem; margin-top: 8px; }
   .day-toggle {
     display: flex;
     gap: 8px;
     margin-bottom: 14px;
+    background: var(--card);
+    border-radius: 12px;
+    padding: 4px;
+    border: 1px solid rgba(128,128,128,0.1);
   }
   .day-toggle button {
     flex: 1;
-    padding: 10px;
+    padding: 9px;
     border: none;
-    border-radius: 10px;
+    border-radius: 9px;
     font-size: 0.95rem;
     font-weight: 700;
     cursor: pointer;
-    background: var(--card);
+    background: transparent;
     color: var(--muted);
+    transition: background 0.2s ease, color 0.2s ease;
   }
   .day-toggle button.active {
     background: var(--accent);
-    color: #111;
+    color: #fff;
   }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-in { animation: fadeIn 0.35s ease; }
 </style>
 </head>
 <body>
   <div class="header-row">
     <h1>Morning Briefing</h1>
-    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙</button>
+    <div class="header-actions">
+      <button class="theme-toggle" onclick="loadAll()" title="Refresh">🔄</button>
+      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙</button>
+    </div>
   </div>
   <div class="subtitle" id="dateLine"></div>
-
-  <button class="refresh" onclick="loadAll()">Refresh</button>
 
   <div class="day-toggle">
     <button id="btnToday" class="active" onclick="selectDay(0)">Today</button>
@@ -210,40 +239,61 @@ const OFFICE = { lat: 48.1411534, lon: 11.5681888, name: "Lenbachplatz 3" };
 
 const TRANSPORT_TYPES = "SCHIFF,RUFTAXI,BAHN,REGIONAL_BUS,UBAHN,TRAM,SBAHN,BUS";
 
-// WMO weather code -> emoji + label
+// WMO weather code -> [label, icon-category]
 const WEATHER_CODES = {
-  0: ["☀️", "Clear sky"],
-  1: ["🌤️", "Mainly clear"],
-  2: ["⛅", "Partly cloudy"],
-  3: ["☁️", "Overcast"],
-  45: ["🌫️", "Fog"],
-  48: ["🌫️", "Fog"],
-  51: ["🌦️", "Light drizzle"],
-  53: ["🌦️", "Drizzle"],
-  55: ["🌧️", "Dense drizzle"],
-  56: ["🌧️", "Freezing drizzle"],
-  57: ["🌧️", "Freezing drizzle"],
-  61: ["🌦️", "Light rain"],
-  63: ["🌧️", "Rain"],
-  65: ["🌧️", "Heavy rain"],
-  66: ["🌧️", "Freezing rain"],
-  67: ["🌧️", "Freezing rain"],
-  71: ["🌨️", "Light snow"],
-  73: ["🌨️", "Snow"],
-  75: ["❄️", "Heavy snow"],
-  77: ["❄️", "Snow grains"],
-  80: ["🌦️", "Rain showers"],
-  81: ["🌧️", "Rain showers"],
-  82: ["⛈️", "Violent showers"],
-  85: ["🌨️", "Snow showers"],
-  86: ["❄️", "Snow showers"],
-  95: ["⛈️", "Thunderstorm"],
-  96: ["⛈️", "Thunderstorm + hail"],
-  99: ["⛈️", "Thunderstorm + hail"],
+  0: ["Clear sky", "sun"],
+  1: ["Mainly clear", "sun"],
+  2: ["Partly cloudy", "cloud-sun"],
+  3: ["Overcast", "cloud"],
+  45: ["Fog", "fog"],
+  48: ["Fog", "fog"],
+  51: ["Light drizzle", "rain"],
+  53: ["Drizzle", "rain"],
+  55: ["Dense drizzle", "rain"],
+  56: ["Freezing drizzle", "rain"],
+  57: ["Freezing drizzle", "rain"],
+  61: ["Light rain", "rain"],
+  63: ["Rain", "rain"],
+  65: ["Heavy rain", "rain"],
+  66: ["Freezing rain", "rain"],
+  67: ["Freezing rain", "rain"],
+  71: ["Light snow", "snow"],
+  73: ["Snow", "snow"],
+  75: ["Heavy snow", "snow"],
+  77: ["Snow grains", "snow"],
+  80: ["Rain showers", "rain"],
+  81: ["Rain showers", "rain"],
+  82: ["Violent showers", "storm"],
+  85: ["Snow showers", "snow"],
+  86: ["Snow showers", "snow"],
+  95: ["Thunderstorm", "storm"],
+  96: ["Thunderstorm + hail", "storm"],
+  99: ["Thunderstorm + hail", "storm"],
 };
 
 function weatherInfo(code) {
-  return WEATHER_CODES[code] || ["❓", "Unknown"];
+  return WEATHER_CODES[code] || ["Unknown", "cloud"];
+}
+
+// Inline SVG icon set (stroke="currentColor" so it follows theme)
+const WEATHER_ICONS = {
+  sun: `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>`,
+  "cloud-sun": `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="3" stroke="#f5a623"/><path d="M8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14M3.5 3.5l1 1M11.5 3.5l-1 1" stroke="#f5a623"/><path d="M9 18a4 4 0 0 0 0-8 5 5 0 0 0-9.6 1.5A3.5 3.5 0 0 0 4.5 18H9z" stroke="currentColor" fill="none" transform="translate(6,2)"/></svg>`,
+  cloud: `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19a3.5 3.5 0 0 0 0-7 5.5 5.5 0 0 0-10.6 1.5A3.5 3.5 0 0 0 7.5 19h10z"/></svg>`,
+  fog: `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 14a3.5 3.5 0 0 0 0-7 5.5 5.5 0 0 0-10.4 1.8"/><path d="M3 14h13M3 18h18M3 10h6"/></svg>`,
+  rain: `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 13a3.5 3.5 0 0 0 0-7 5.5 5.5 0 0 0-10.6 1.5A3.5 3.5 0 0 0 7.5 13h10z"/><path d="M8 17l-1 3M12 17l-1 3M16 17l-1 3" stroke="#4da3ff"/></svg>`,
+  snow: `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 13a3.5 3.5 0 0 0 0-7 5.5 5.5 0 0 0-10.6 1.5A3.5 3.5 0 0 0 7.5 13h10z"/><path d="M8 17v3M8 18.5l-1.5 1M8 18.5l1.5 1M12 17v3M12 18.5l-1.5 1M12 18.5l1.5 1M16 17v3M16 18.5l-1.5 1M16 18.5l1.5 1" stroke="#9ad6ff"/></svg>`,
+  storm: `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 12a3.5 3.5 0 0 0 0-7 5.5 5.5 0 0 0-10.6 1.5A3.5 3.5 0 0 0 7.5 12h10z"/><path d="M13 11l-3 4h3l-2 4" stroke="#f5a623"/></svg>`,
+};
+
+function weatherIcon(category) {
+  return WEATHER_ICONS[category] || WEATHER_ICONS.cloud;
+}
+
+function flashIn(el) {
+  el.classList.remove("fade-in");
+  void el.offsetWidth;
+  el.classList.add("fade-in");
 }
 
 function fmtTime(iso) {
@@ -289,25 +339,28 @@ function routingDateTime(dayIdx, refHour, refMinute) {
 
 function renderWeather(data) {
   const days = ["Today", "Tomorrow"];
-  let html = "";
+  let html = `<div class="weather-grid">`;
   for (let i = 0; i < 2; i++) {
-    const [icon, label] = weatherInfo(data.daily.weathercode[i]);
+    const [label, category] = weatherInfo(data.daily.weathercode[i]);
     const max = Math.round(data.daily.temperature_2m_max[i]);
     const min = Math.round(data.daily.temperature_2m_min[i]);
     const rain = data.daily.precipitation_probability_max[i];
     const wind = Math.round(data.daily.windspeed_10m_max[i]);
     const umbrella = rain >= 30 ? "☔ Umbrella: Yes" : "🚫☔ Umbrella: No";
     html += `
-      <div class="weather-row">
-        <div>
-          <div class="weather-day">${icon} ${days[i]}</div>
-          <div class="weather-detail">${label} · 🌧️ ${rain}% · 💨 ${wind} km/h</div>
-          <div class="weather-umbrella">${umbrella}</div>
-        </div>
+      <div class="weather-col">
+        <div class="weather-day">${days[i]}</div>
+        <div class="weather-icon">${weatherIcon(category)}</div>
         <div class="big-temp">${min}° / ${max}°</div>
+        <div class="weather-detail">${label}</div>
+        <div class="weather-detail">🌧️ ${rain}% · 💨 ${wind} km/h</div>
+        <div class="weather-umbrella">${umbrella}</div>
       </div>`;
   }
-  document.getElementById("weather").innerHTML = html;
+  html += `</div>`;
+  const el = document.getElementById("weather");
+  el.innerHTML = html;
+  flashIn(el);
   return data;
 }
 
@@ -343,11 +396,13 @@ function renderOutfit(data, dayIdx) {
     notes.push("💨 Windy — windbreaker helps");
   }
 
-  document.getElementById("outfit").innerHTML = `
+  const el = document.getElementById("outfit");
+  el.innerHTML = `
     <div class="outfit-icon">${icon}</div>
     <div class="outfit-text">${text}</div>
     ${notes.length ? `<div class="outfit-notes">${notes.join(" · ")}</div>` : ""}
   `;
+  flashIn(el);
 }
 
 function summarizeRoute(route) {
@@ -397,7 +452,9 @@ function renderRoutes(elementId, routes) {
         ${legsHtml}
       </div>`;
   }).join("");
-  document.getElementById(elementId).innerHTML = html;
+  const el = document.getElementById(elementId);
+  el.innerHTML = html;
+  flashIn(el);
   return summaries;
 }
 
@@ -442,10 +499,12 @@ function updateLeaveBy() {
     urgent = diffMin <= 5;
   }
 
-  document.getElementById("leaveBy").innerHTML = `
+  const el = document.getElementById("leaveBy");
+  el.innerHTML = `
     <div class="leave-countdown${urgent ? " urgent" : ""}">${text}</div>
     <div class="leave-sub">First option departs at ${time} toward office</div>
   `;
+  flashIn(el);
 }
 
 async function loadRoutes(dayIdx) {
