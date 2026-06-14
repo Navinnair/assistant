@@ -198,6 +198,33 @@
     vertical-align: 1px;
   }
   .route.chosen .route-num { background: var(--accent); color: var(--on-accent); }
+  .update-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 20px;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: var(--primary-container);
+    color: var(--on-primary-container);
+    border: 1px solid var(--accent);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+    font-size: 0.85rem;
+    font-weight: 600;
+    z-index: 100;
+  }
+  .update-toast button {
+    border: none;
+    border-radius: 10px;
+    padding: 6px 14px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 700;
+    cursor: pointer;
+  }
   .delay-tag {
     display: inline-block;
     margin-left: 6px;

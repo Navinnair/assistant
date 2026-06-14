@@ -902,9 +902,38 @@ loadAll();
 // Auto-refresh every 5 minutes
 setInterval(loadAll, CONFIG.refreshMs);
 
-// --- PWA: register service worker for install + offline ---
+// --- PWA: register service worker + "new version" refresh toast ---
+function showUpdateToast(reg) {
+  const toast = document.getElementById("updateToast");
+  toast.style.display = "flex";
+  document.getElementById("updateBtn").onclick = () => {
+    if (reg.waiting) reg.waiting.postMessage("SKIP_WAITING");
+  };
+}
+
 if ("serviceWorker" in navigator) {
+  let reloading = false;
+  // The new SW took control (after SKIP_WAITING) — load the fresh code once.
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloading) return;
+    reloading = true;
+    window.location.reload();
+  });
+
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
+    navigator.serviceWorker.register("sw.js").then((reg) => {
+      // A waiting worker already exists (updated while the app was closed).
+      if (reg.waiting && navigator.serviceWorker.controller) showUpdateToast(reg);
+      reg.addEventListener("updatefound", () => {
+        const nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener("statechange", () => {
+          // Installed + an existing controller => this is an update, not first install.
+          if (nw.state === "installed" && navigator.serviceWorker.controller) {
+            showUpdateToast(reg);
+          }
+        });
+      });
+    }).catch(() => {});
   });
 }

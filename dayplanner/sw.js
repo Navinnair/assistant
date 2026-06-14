@@ -1,5 +1,5 @@
 // Bump this version on each deploy to refresh the cached app shell.
-const CACHE = "my-planner-v2";
+const CACHE = "my-planner-v3";
 const ASSETS = [
   "./",
   "./index.html",
@@ -12,9 +12,14 @@ const ASSETS = [
 ];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting())
-  );
+  // No auto-skipWaiting: a new version waits until the page's "Refresh" toast
+  // (or all tabs close), so we never swap code out from under an open tab.
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
+});
+
+// The page tells us to activate now when the user taps "Refresh".
+self.addEventListener("message", (e) => {
+  if (e.data === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (e) => {
