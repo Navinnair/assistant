@@ -198,6 +198,17 @@
     vertical-align: 1px;
   }
   .route.chosen .route-num { background: var(--accent); color: var(--on-accent); }
+  .delay-tag {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: rgba(255,180,84,0.18);
+    color: #ffb454;
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+  .delay-tag.cancel { background: rgba(255,180,171,0.18); color: #ffb4ab; }
   .route-rel { font-weight: 600; font-size: 0.85rem; }
   .route-rel.urgent { color: #ffb4ab; }
   .route-rel.soon { color: #ffd479; }

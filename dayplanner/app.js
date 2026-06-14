@@ -338,9 +338,13 @@ function summarizeRoute(route) {
       direction: p.line.destination,
       board: p.from.name,
       alight: p.to.name,
+      boardStationId: p.from.stationGlobalId,
       boardTime: p.from.plannedDeparture,
       alightTime: p.to.plannedDeparture,
       realTime: p.realTime,
+      delayMin: 0,        // filled by enrichRealtime()
+      realtimeBoard: null,
+      cancelled: false,
       warnings: [...(p.messages || []), ...(p.infos || [])]
         .map(m => (typeof m === "string" ? m : m.text || m.title || ""))
         .filter(Boolean),
@@ -361,6 +365,55 @@ function summarizeRoute(route) {
   const durationMs = new Date(arrival) - new Date(departure);
 
   return { departure, arrival, durationMs, walk, legs };
+}
+
+// Live delay of a route's first train (minutes), and effective (delay-shifted)
+// times. A delay pushes both the train and your leave-home time back equally.
+function routeDelayMs(s) {
+  const leg = s.legs[0];
+  return leg && leg.delayMin ? leg.delayMin * 60000 : 0;
+}
+function effDepartureMs(s) {
+  return new Date(s.departure).getTime() + routeDelayMs(s);
+}
+function effBoardMs(s) {
+  const leg = s.legs[0];
+  const planned = leg ? new Date(leg.boardTime).getTime() : new Date(s.departure).getTime();
+  return planned + routeDelayMs(s);
+}
+function routeCancelled(s) {
+  return s.legs.some((l) => l.cancelled);
+}
+
+// Enrich summaries with live delays from the /departures endpoint, matched by
+// line + planned time at each route's first station. One call per distinct
+// station (usually 1-2), so cheap. Mutates the leg objects in place.
+async function enrichRealtime(summaries) {
+  const byStation = {};
+  for (const s of summaries) {
+    const leg = s.legs[0];
+    if (!leg || !leg.boardStationId) continue;
+    (byStation[leg.boardStationId] = byStation[leg.boardStationId] || []).push(leg);
+  }
+  await Promise.all(Object.keys(byStation).map(async (gid) => {
+    try {
+      const deps = await fetch(
+        `https://www.mvg.de/api/bgw-pt/v3/departures?globalId=${encodeURIComponent(gid)}&limit=60`
+      ).then((r) => r.json());
+      for (const leg of byStation[gid]) {
+        const plannedMs = new Date(leg.boardTime).getTime();
+        const m = deps.find((x) =>
+          x.label === leg.line && Math.abs(x.plannedDepartureTime - plannedMs) < 60000
+        );
+        if (m) {
+          leg.delayMin = m.delayInMinutes || 0;
+          leg.realtimeBoard = m.realtimeDepartureTime ? new Date(m.realtimeDepartureTime).toISOString() : null;
+          leg.cancelled = !!m.cancelled;
+          leg.realTime = true;
+        }
+      }
+    } catch (e) {}
+  }));
 }
 
 // Official MVG line colors. Keyed by exact line label; fall back to a
@@ -390,10 +443,11 @@ function leaveTier(diffMin) {
 // least prepBufferMin away (you can realistically still make it). If none
 // qualify (you're too late), fall back to the last — shown as "now".
 function pickChosen(summaries, now) {
-  const cutoff = new Date(now.getTime() + CONFIG.prepBufferMin * 60000);
+  const cutoffMs = now.getTime() + CONFIG.prepBufferMin * 60000;
   let chosen = summaries[summaries.length - 1];
   for (const s of summaries) {
-    if (new Date(s.departure) > cutoff) { chosen = s; break; }
+    if (routeCancelled(s)) continue; // never recommend a cancelled train
+    if (effDepartureMs(s) > cutoffMs) { chosen = s; break; }
   }
   return chosen;
 }
@@ -436,9 +490,14 @@ function renderRoutes(elementId, summaries, count) {
     const alertHtml = allWarnings.length
       ? `<div class="route-alert">⚠️ ${allWarnings[0]}${allWarnings.length > 1 ? ` (+${allWarnings.length - 1} more)` : ""}</div>`
       : "";
+    const delayM = s.legs[0] ? s.legs[0].delayMin : 0;
+    const cancelled = routeCancelled(s);
+    const delayTag = cancelled
+      ? '<span class="delay-tag cancel">cancelled</span>'
+      : delayM > 0 ? `<span class="delay-tag">+${delayM} late</span>` : "";
     return `
-      <div class="route" data-departure="${s.departure}">
-        <div class="route-time"><span class="route-num"></span>${fmtTime(s.departure)} → ${fmtTime(s.arrival)} (${fmtDuration(s.durationMs)})<span class="route-rel"></span></div>
+      <div class="route" data-departure="${s.departure}" data-delay="${delayM}">
+        <div class="route-time"><span class="route-num"></span>${fmtTime(s.departure)} → ${fmtTime(s.arrival)} (${fmtDuration(s.durationMs)})${delayTag}<span class="route-rel"></span></div>
         ${alertHtml}
         ${walkHtml}
         ${legsHtml}
@@ -471,10 +530,12 @@ function refreshRouteLive() {
   let chosenMarked = false; // only the first row at the chosen time is highlighted
   rows.forEach((row) => {
     const dep = row.getAttribute("data-departure");
+    const delayMs = (parseInt(row.getAttribute("data-delay"), 10) || 0) * 60000;
     const rel = row.querySelector(".route-rel");
     const num = row.querySelector(".route-num");
     if (live && dep) {
-      const diffExact = (new Date(dep) - now) / 60000;
+      // Effective leave-home = planned + live delay.
+      const diffExact = (new Date(dep).getTime() + delayMs - now) / 60000;
       const diff = Math.round(diffExact);
       // Drop rows whose leave time has passed — old options are just clutter.
       if (diffExact < 0) {
@@ -505,6 +566,7 @@ let selectedDay = 0; // 0 = today, 1 = tomorrow
 let selectedDirection = "office"; // "home" or "office" — master toggle, defaults to office
 let visibleCount = 5;
 let routeCache = { home: null, office: null };
+let enriched = { home: false, office: false }; // live delays applied this load?
 
 function routesTitleFor(direction, dayIdx) {
   const label = dayIdx === 0 ? "Today" : "Tomorrow";
@@ -538,6 +600,16 @@ function selectDirection(direction) {
   const cached = routeCache[direction];
   if (cached) {
     renderRoutes("routesList", cached, visibleCount);
+    // First time we show this direction today, pull its live delays.
+    if (!enriched[direction] && selectedDay === 0) {
+      enrichRealtime(cached).then(() => {
+        enriched[direction] = true;
+        if (selectedDirection === direction) {
+          renderRoutes("routesList", cached, visibleCount);
+          updateLeaveBy();
+        }
+      });
+    }
   } else {
     document.getElementById("routesList").innerHTML = SKELETON.routes;
     document.getElementById("showMoreBtn").style.display = "none";
@@ -568,16 +640,20 @@ function updateLeaveBy() {
   document.getElementById("leaveByTitle").textContent =
     selectedDirection === "office" ? "Time to Go — To Office" : "Time to Go — To Home";
 
-  // s.departure is the API-accurate time to leave the origin (start of the
-  // walk to the station).
   const chosen = pickChosen(summaries, now);
 
-  const leaveTime = new Date(chosen.departure);
-  // The actual transit departure = first transit leg's board time.
-  const departTime = chosen.legs[0] ? new Date(chosen.legs[0].boardTime) : leaveTime;
+  // Effective (live, delay-shifted) times: leaving and the train departure.
+  const leaveTime = new Date(effDepartureMs(chosen));
+  const departTime = new Date(effBoardMs(chosen));
+  const delayMin = chosen.legs[0] ? chosen.legs[0].delayMin : 0;
 
   const leaveDiff = Math.round((leaveTime - now) / 60000);
   const departDiff = Math.round((departTime - now) / 60000);
+
+  const lineLabel = chosen.legs[0] ? chosen.legs[0].line : "walk";
+  let depLabel = `Departure (${lineLabel})`;
+  if (chosen.legs[0] && chosen.legs[0].cancelled) depLabel += " ✖ cancelled";
+  else if (delayMin > 0) depLabel += ` · <span class="delay-tag">+${delayMin} late</span>`;
 
   function countdownText(diffMin) {
     if (diffMin <= 0) return ["Now!", leaveTier(diffMin)];
@@ -603,7 +679,7 @@ function updateLeaveBy() {
         <div class="leave-countdown highlight ${leaveLevel}">${leaveText}</div>
       </div>
       <div class="leave-col">
-        <div class="leave-label">Departure (${chosen.legs[0] ? chosen.legs[0].line : "walk"})</div>
+        <div class="leave-label">${depLabel}</div>
         <div class="leave-clock">${fmtTime(departTime.toISOString())}</div>
         <div class="leave-countdown ${departLevel}">${departText}</div>
       </div>
@@ -653,6 +729,7 @@ function renderStaleNote() {
 async function loadRoutes(dayIdx) {
   routeCache = { home: null, office: null };
   liveLoaded = { home: false, office: false };
+  enriched = { home: false, office: false };
   routeCacheSavedAt = 0;
   visibleCount = 5;
 
@@ -680,6 +757,15 @@ async function loadRoutes(dayIdx) {
         renderRoutes("routesList", routeCache[dir], visibleCount);
         updateLeaveBy();
         renderStaleNote();
+      }
+      // Overlay live delays for the visible direction (today only), then redraw.
+      if (selectedDirection === dir && dayIdx === 0) {
+        await enrichRealtime(routeCache[dir]);
+        enriched[dir] = true;
+        if (selectedDirection === dir) {
+          renderRoutes("routesList", routeCache[dir], visibleCount);
+          updateLeaveBy();
+        }
       }
     } catch (e) {
       // Keep any cached rows on screen; only show failure if we have nothing.
