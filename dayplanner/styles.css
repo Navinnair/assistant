@@ -581,3 +581,8 @@
     font-weight: 500;
     cursor: pointer;
   }
+
+
+  /* --- Wider single column on tablet / desktop --- */
+  @media (min-width: 768px) { body { max-width: 720px; } }
+  @media (min-width: 1024px) { body { max-width: 960px; } }
