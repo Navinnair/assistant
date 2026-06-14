@@ -342,6 +342,7 @@ function summarizeRoute(route) {
       boardTime: p.from.plannedDeparture,
       alightTime: p.to.plannedDeparture,
       realTime: p.realTime,
+      occupancy: p.occupancy || "UNKNOWN",
       delayMin: 0,        // filled by enrichRealtime()
       realtimeBoard: null,
       cancelled: false,
@@ -410,6 +411,7 @@ async function enrichRealtime(summaries) {
           leg.realtimeBoard = m.realtimeDepartureTime ? new Date(m.realtimeDepartureTime).toISOString() : null;
           leg.cancelled = !!m.cancelled;
           leg.realTime = true;
+          if (m.occupancy) leg.occupancy = m.occupancy;
         }
       }
     } catch (e) {}
@@ -428,6 +430,13 @@ const TYPE_COLORS = {
   UBAHN: "#0065AE", SBAHN: "#00975F", TRAM: "#E2001A",
   BUS: "#00586A", REGIONAL_BUS: "#00586A", BAHN: "#5b6770",
 };
+// Crowding badge for a leg's occupancy; empty when unknown.
+const OCCUPANCY = { LOW: ["occ-low", "Quiet"], MEDIUM: ["occ-med", "Busy"], HIGH: ["occ-high", "Packed"] };
+function occupancyTag(level) {
+  const o = OCCUPANCY[level];
+  return o ? `<span class="occupancy ${o[0]}">● ${o[1]}</span>` : "";
+}
+
 function lineColor(line, type) {
   if (LINE_COLORS[line]) return LINE_COLORS[line];
   // Munich line-family conventions for anything without an explicit color.
@@ -485,7 +494,7 @@ function renderRoutes(elementId, summaries, count) {
       ? s.legs.map(l => `
           <div class="route-leg">
             <span class="route-line" style="background:${lineColor(l.line, l.transportType)}">${l.line}</span> → ${l.direction}
-            ${l.realTime ? '<span class="route-livetag">● live</span>' : ""}<br>
+            ${l.realTime ? '<span class="route-livetag">● live</span>' : ""}${occupancyTag(l.occupancy)}<br>
             <span class="route-station">${fmtTime(l.boardTime)} ${l.board}</span> →
             <span class="route-station">${fmtTime(l.alightTime)} ${l.alight}</span>
             ${l.warnings.map(w => `<div class="route-warning">⚠️ ${w}</div>`).join("")}

@@ -225,6 +225,13 @@
     font-weight: 700;
     cursor: pointer;
   }
+  .occupancy { margin-left: 6px; font-size: 0.72rem; font-weight: 700; }
+  .occ-low { color: #8bd99f; }
+  .occ-med { color: #ffd479; }
+  .occ-high { color: #ffb4ab; }
+  :root[data-theme="light"] .occ-low { color: #1e6b3a; }
+  :root[data-theme="light"] .occ-med { color: #8a5d00; }
+  :root[data-theme="light"] .occ-high { color: #ba1a1a; }
   .delay-tag {
     display: inline-block;
     margin-left: 6px;
