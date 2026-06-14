@@ -1,6 +1,21 @@
-// Fixed coordinates resolved via MVG location lookup
-const HOME = { lat: 48.1769745, lon: 11.5652835, name: "Riesenfeldstraße 10" };
-const OFFICE = { lat: 48.1411534, lon: 11.5681888, name: "Lenbachplatz 3" };
+// --- Single place to tweak everything ---
+const CONFIG = {
+  // Fixed coordinates resolved via MVG location lookup.
+  home:   { lat: 48.1769745, lon: 11.5652835, name: "Riesenfeldstraße 10" },
+  office: { lat: 48.1411534, lon: 11.5681888, name: "Lenbachplatz 3" },
+  // Usual times — the reference point when routing for "tomorrow".
+  officeArrival: { hour: 9, minute: 0 },
+  homeReturn:    { hour: 17, minute: 45 },
+  // Leave-by countdown color thresholds (minutes to leave).
+  urgentMin: 4,
+  soonMin: 8,
+  // Waking-hours window (24h) for outfit/umbrella decisions and the forecast.
+  waking: { start: 8, end: 21 },
+  // Auto-refresh cadence.
+  refreshMs: 5 * 60 * 1000,
+};
+const HOME = CONFIG.home;
+const OFFICE = CONFIG.office;
 
 const TRANSPORT_TYPES = "SCHIFF,RUFTAXI,BAHN,REGIONAL_BUS,UBAHN,TRAM,SBAHN,BUS";
 
@@ -64,17 +79,17 @@ function weatherIcon(category, size) {
   return svg;
 }
 
-// Hourly entries for the given day, starting from "now" (today) or 8am
-// (tomorrow), at a fixed step, capped to waking hours.
+// Hourly entries for the given day, starting from "now" (today) or the start
+// of waking hours (tomorrow), at a fixed step, capped to waking hours.
 function hourlyEntries(data, dayIdx, count, stepH) {
   const targetDate = data.daily.time[dayIdx];
-  const startHour = dayIdx === 0 ? new Date().getHours() : 8;
+  const startHour = dayIdx === 0 ? new Date().getHours() : CONFIG.waking.start;
   const entries = [];
   for (let i = 0; i < data.hourly.time.length && entries.length < count; i++) {
     const [date, time] = data.hourly.time[i].split("T");
     if (date !== targetDate) continue;
     const hour = parseInt(time.split(":")[0], 10);
-    if (hour < startHour || hour > 22) continue;
+    if (hour < startHour || hour > CONFIG.waking.end) continue;
     if ((hour - startHour) % stepH !== 0) continue;
     entries.push({
       hour,
@@ -175,7 +190,7 @@ function daytimeHourlyReduce(data, dayIdx, field, fn, init) {
     const [date, time] = data.hourly.time[i].split("T");
     if (date !== targetDate) continue;
     const hour = parseInt(time.split(":")[0], 10);
-    if (hour >= 8 && hour <= 21) {
+    if (hour >= CONFIG.waking.start && hour <= CONFIG.waking.end) {
       result = fn(result, data.hourly[field][i]);
     }
   }
@@ -437,11 +452,6 @@ function showMoreRoutes() {
   if (cached) renderRoutes("routesList", cached, visibleCount);
 }
 
-// Below this many minutes-to-leave, the countdown is shown as urgent (red)
-const URGENT_THRESHOLD_MIN = 4;
-// Below this many minutes-to-leave (but above urgent), shown as soon (amber)
-const SOON_THRESHOLD_MIN = 8;
-
 function updateLeaveBy() {
   const card = document.getElementById("leaveByCard");
   // Follows the master direction toggle: "office" = leave home → office,
@@ -478,8 +488,8 @@ function updateLeaveBy() {
 
   // Priority level for color-coding: "urgent" (red), "soon" (amber), "ok" (green)
   function priorityLevel(diffMin) {
-    if (diffMin <= URGENT_THRESHOLD_MIN) return "urgent";
-    if (diffMin <= SOON_THRESHOLD_MIN) return "soon";
+    if (diffMin <= CONFIG.urgentMin) return "urgent";
+    if (diffMin <= CONFIG.soonMin) return "soon";
     return "ok";
   }
 
@@ -526,7 +536,7 @@ async function loadRoutes(dayIdx) {
 
   const fetchHome = async () => {
     try {
-      const homeTime = routingDateTime(dayIdx, 17, 45);
+      const homeTime = routingDateTime(dayIdx, CONFIG.homeReturn.hour, CONFIG.homeReturn.minute);
       const homeRoutes = await fetchRoutesPadded(OFFICE, HOME, homeTime);
       routeCache.home = homeRoutes.map(r => summarizeRoute(r));
       if (selectedDirection === "home") {
@@ -540,7 +550,7 @@ async function loadRoutes(dayIdx) {
 
   const fetchOffice = async () => {
     try {
-      const officeTime = routingDateTime(dayIdx, 9, 0);
+      const officeTime = routingDateTime(dayIdx, CONFIG.officeArrival.hour, CONFIG.officeArrival.minute);
       const officeRoutes = await fetchRoutesPadded(HOME, OFFICE, officeTime);
       routeCache.office = officeRoutes.map(r => summarizeRoute(r));
       if (selectedDirection === "office") {
@@ -652,7 +662,7 @@ document.getElementById("routesTitle").textContent = routesTitleFor(selectedDire
 loadAll();
 
 // Auto-refresh every 5 minutes
-setInterval(loadAll, 5 * 60 * 1000);
+setInterval(loadAll, CONFIG.refreshMs);
 
 // --- PWA: register service worker for install + offline ---
 if ("serviceWorker" in navigator) {
