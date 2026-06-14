@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day Planner</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --card: #1a1d24;
+    --accent: #4da3ff;
+    --text: #e8e8e8;
+    --muted: #9aa0a8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  .subtitle { color: var(--muted); font-size: 0.85rem; margin-bottom: 16px; }
+  .card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  .card h2 {
+    font-size: 1rem;
+    margin: 0 0 10px;
+    color: var(--accent);
+  }
+  .weather-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .weather-row:last-child { margin-bottom: 0; }
+  .weather-day { font-weight: 600; }
+  .weather-detail { color: var(--muted); font-size: 0.85rem; }
+  .weather-umbrella { font-size: 0.85rem; font-weight: 600; margin-top: 2px; }
+  .big-temp { font-size: 1.3rem; font-weight: 700; }
+  .outfit-icon { font-size: 2.2rem; text-align: center; margin-bottom: 6px; }
+  .outfit-text { text-align: center; font-size: 1rem; font-weight: 600; }
+  .outfit-notes { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 6px; }
+  .route {
+    border-left: 3px solid var(--accent);
+    padding: 6px 10px;
+    margin-bottom: 8px;
+  }
+  .route:last-child { margin-bottom: 0; }
+  .route-time {
+    font-weight: 700;
+    font-size: 1rem;
+  }
+  .route-lines {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-top: 2px;
+  }
+  .route-duration {
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+  .route-leg {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+  .route-line {
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .route-station {
+    color: var(--text);
+  }
+  .refresh {
+    width: 100%;
+    padding: 12px;
+    background: var(--accent);
+    color: #111;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 14px;
+  }
+  .loading { color: var(--muted); font-size: 0.9rem; }
+  .updated { text-align: center; color: var(--muted); font-size: 0.75rem; margin-top: 8px; }
+  .day-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .day-toggle button {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    background: var(--card);
+    color: var(--muted);
+  }
+  .day-toggle button.active {
+    background: var(--accent);
+    color: #111;
+  }
+</style>
+</head>
+<body>
+  <h1>Morning Briefing</h1>
+  <div class="subtitle" id="dateLine"></div>
+
+  <button class="refresh" onclick="loadAll()">Refresh</button>
+
+  <div class="day-toggle">
+    <button id="btnToday" class="active" onclick="selectDay(0)">Today</button>
+    <button id="btnTomorrow" onclick="selectDay(1)">Tomorrow</button>
+  </div>
+
+  <div class="card">
+    <h2 id="outfitTitle">Outfit for Today</h2>
+    <div id="outfit" class="loading">Loading...</div>
+  </div>
+
+  <div class="card">
+    <h2>Weather</h2>
+    <div id="weather" class="loading">Loading...</div>
+  </div>
+
+  <div class="card">
+    <h2 id="toOfficeTitle">To Office (Lenbachpl. 3) — Today</h2>
+    <div id="toOffice" class="loading">Loading...</div>
+  </div>
+
+  <div class="card">
+    <h2 id="toHomeTitle">To Home (Riesenfeldstr. 10) — Today</h2>
+    <div id="toHome" class="loading">Loading...</div>
+  </div>
+
+  <div class="updated" id="updated"></div>
+
+<script>
+// Fixed coordinates resolved via MVG location lookup
+const HOME = { lat: 48.1769745, lon: 11.5652835, name: "Riesenfeldstraße 10" };
+const OFFICE = { lat: 48.1411534, lon: 11.5681888, name: "Lenbachplatz 3" };
+
+const TRANSPORT_TYPES = "SCHIFF,RUFTAXI,BAHN,REGIONAL_BUS,UBAHN,TRAM,SBAHN,BUS";
+
+// WMO weather code -> emoji + label
+const WEATHER_CODES = {
+  0: ["☀️", "Clear sky"],
+  1: ["🌤️", "Mainly clear"],
+  2: ["⛅", "Partly cloudy"],
+  3: ["☁️", "Overcast"],
+  45: ["🌫️", "Fog"],
+  48: ["🌫️", "Fog"],
+  51: ["🌦️", "Light drizzle"],
+  53: ["🌦️", "Drizzle"],
+  55: ["🌧️", "Dense drizzle"],
+  56: ["🌧️", "Freezing drizzle"],
+  57: ["🌧️", "Freezing drizzle"],
+  61: ["🌦️", "Light rain"],
+  63: ["🌧️", "Rain"],
+  65: ["🌧️", "Heavy rain"],
+  66: ["🌧️", "Freezing rain"],
+  67: ["🌧️", "Freezing rain"],
+  71: ["🌨️", "Light snow"],
+  73: ["🌨️", "Snow"],
+  75: ["❄️", "Heavy snow"],
+  77: ["❄️", "Snow grains"],
+  80: ["🌦️", "Rain showers"],
+  81: ["🌧️", "Rain showers"],
+  82: ["⛈️", "Violent showers"],
+  85: ["🌨️", "Snow showers"],
+  86: ["❄️", "Snow showers"],
+  95: ["⛈️", "Thunderstorm"],
+  96: ["⛈️", "Thunderstorm + hail"],
+  99: ["⛈️", "Thunderstorm + hail"],
+};
+
+function weatherInfo(code) {
+  return WEATHER_CODES[code] || ["❓", "Unknown"];
+}
+
+function fmtTime(iso) {
+  return new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+}
+
+function fmtDuration(ms) {
+  const min = Math.round(ms / 60000);
+  return `${min} min`;
+}
+
+async function fetchWeather() {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${HOME.lat}&longitude=${HOME.lon}` +
+    `&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode,windspeed_10m_max` +
+    `&hourly=temperature_2m,precipitation_probability,weathercode,windspeed_10m` +
+    `&timezone=Europe%2FBerlin&forecast_days=2`;
+  const res = await fetch(url);
+  return res.json();
+}
+
+async function fetchRoutes(origin, dest, dateTime) {
+  const dt = dateTime.toISOString();
+  const url = `https://www.mvg.de/api/bgw-pt/v3/routes?originLatitude=${origin.lat}&originLongitude=${origin.lon}` +
+    `&destinationLatitude=${dest.lat}&destinationLongitude=${dest.lon}` +
+    `&routingDateTime=${dt}&routingDateTimeIsArrival=false&transportTypes=${TRANSPORT_TYPES}`;
+  const res = await fetch(url);
+  return res.json();
+}
+
+// dayIdx: 0 = today, 1 = tomorrow. refHour/refMinute = usual departure time.
+// Today always shows next available departures from now (so it works
+// whether you check before or after your usual commute time).
+// Tomorrow uses the fixed reference time since "now" doesn't apply yet.
+function routingDateTime(dayIdx, refHour, refMinute) {
+  if (dayIdx === 1) {
+    const ref = new Date();
+    ref.setDate(ref.getDate() + 1);
+    ref.setHours(refHour, refMinute, 0, 0);
+    return ref;
+  }
+  return new Date();
+}
+
+function renderWeather(data) {
+  const days = ["Today", "Tomorrow"];
+  let html = "";
+  for (let i = 0; i < 2; i++) {
+    const [icon, label] = weatherInfo(data.daily.weathercode[i]);
+    const max = Math.round(data.daily.temperature_2m_max[i]);
+    const min = Math.round(data.daily.temperature_2m_min[i]);
+    const rain = data.daily.precipitation_probability_max[i];
+    const wind = Math.round(data.daily.windspeed_10m_max[i]);
+    const umbrella = rain >= 30 ? "☔ Umbrella: Yes" : "🚫☔ Umbrella: No";
+    html += `
+      <div class="weather-row">
+        <div>
+          <div class="weather-day">${icon} ${days[i]}</div>
+          <div class="weather-detail">${label} · 🌧️ ${rain}% · 💨 ${wind} km/h</div>
+          <div class="weather-umbrella">${umbrella}</div>
+        </div>
+        <div class="big-temp">${min}° / ${max}°</div>
+      </div>`;
+  }
+  document.getElementById("weather").innerHTML = html;
+  return data;
+}
+
+function renderOutfit(data, dayIdx) {
+  const rainProb = data.daily.precipitation_probability_max[dayIdx];
+  const wind = data.daily.windspeed_10m_max[dayIdx];
+  const minTemp = data.daily.temperature_2m_min[dayIdx];
+
+  let icon, text, notes = [];
+
+  if (minTemp < 2) {
+    icon = "🧥❄️";
+    text = "Big winter coat";
+    notes.push("Scarf + gloves recommended");
+  } else if (minTemp < 9) {
+    icon = "🧥";
+    text = "Medium/warm coat";
+  } else if (minTemp < 15) {
+    icon = "🧥";
+    text = "Light jacket / small coat";
+  } else if (minTemp < 21) {
+    icon = "👕";
+    text = "Sweater or light layers, no coat needed";
+  } else {
+    icon = "👕☀️";
+    text = "T-shirt, no jacket needed";
+  }
+
+  if (rainProb >= 40) {
+    notes.push("☔ Take umbrella / rain jacket");
+  }
+  if (wind >= 30) {
+    notes.push("💨 Windy — windbreaker helps");
+  }
+
+  document.getElementById("outfit").innerHTML = `
+    <div class="outfit-icon">${icon}</div>
+    <div class="outfit-text">${text}</div>
+    ${notes.length ? `<div class="outfit-notes">${notes.join(" · ")}</div>` : ""}
+  `;
+}
+
+function summarizeRoute(route) {
+  const departure = route.parts[0].from.plannedDeparture;
+  const arrival = route.parts[route.parts.length - 1].to.plannedDeparture;
+  const durationMs = new Date(arrival) - new Date(departure);
+
+  const legs = route.parts
+    .filter(p => p.line && p.line.transportType !== "PEDESTRIAN")
+    .map(p => ({
+      line: p.line.label,
+      direction: p.line.destination,
+      board: p.from.name,
+      alight: p.to.name,
+      boardTime: p.from.plannedDeparture,
+      alightTime: p.to.plannedDeparture,
+    }));
+
+  return { departure, arrival, durationMs, legs };
+}
+
+function renderRoutes(elementId, routes) {
+  const top = routes.slice(0, 4);
+  if (!top.length) {
+    document.getElementById(elementId).innerHTML = `<div class="loading">No routes found</div>`;
+    return;
+  }
+  const html = top.map(r => {
+    const s = summarizeRoute(r);
+    const legsHtml = s.legs.length
+      ? s.legs.map(l => `
+          <div class="route-leg">
+            <span class="route-line">${l.line}</span> → ${l.direction}<br>
+            <span class="route-station">${fmtTime(l.boardTime)} ${l.board}</span> →
+            <span class="route-station">${fmtTime(l.alightTime)} ${l.alight}</span>
+          </div>`).join("")
+      : `<div class="route-leg">Walk only</div>`;
+    return `
+      <div class="route">
+        <div class="route-time">${fmtTime(s.departure)} → ${fmtTime(s.arrival)} (${fmtDuration(s.durationMs)})</div>
+        ${legsHtml}
+      </div>`;
+  }).join("");
+  document.getElementById(elementId).innerHTML = html;
+}
+
+let weatherData = null;
+let selectedDay = 0; // 0 = today, 1 = tomorrow
+
+function selectDay(dayIdx) {
+  selectedDay = dayIdx;
+  document.getElementById("btnToday").classList.toggle("active", dayIdx === 0);
+  document.getElementById("btnTomorrow").classList.toggle("active", dayIdx === 1);
+  const label = dayIdx === 0 ? "Today" : "Tomorrow";
+  document.getElementById("outfitTitle").textContent = `Outfit for ${label}`;
+  document.getElementById("toOfficeTitle").textContent = `To Office (Lenbachpl. 3) — ${label}`;
+  document.getElementById("toHomeTitle").textContent = `To Home (Riesenfeldstr. 10) — ${label}`;
+
+  if (weatherData) renderOutfit(weatherData, dayIdx);
+  loadRoutes(dayIdx);
+}
+
+async function loadRoutes(dayIdx) {
+  document.getElementById("toOffice").innerHTML = '<div class="loading">Loading...</div>';
+  document.getElementById("toHome").innerHTML = '<div class="loading">Loading...</div>';
+
+  try {
+    const officeTime = routingDateTime(dayIdx, 9, 0);
+    const officeRoutes = await fetchRoutes(HOME, OFFICE, officeTime);
+    renderRoutes("toOffice", officeRoutes);
+  } catch (e) {
+    document.getElementById("toOffice").innerHTML = `<div class="loading">Failed to load routes</div>`;
+  }
+
+  try {
+    const homeTime = routingDateTime(dayIdx, 17, 45);
+    const homeRoutes = await fetchRoutes(OFFICE, HOME, homeTime);
+    renderRoutes("toHome", homeRoutes);
+  } catch (e) {
+    document.getElementById("toHome").innerHTML = `<div class="loading">Failed to load routes</div>`;
+  }
+
+  document.getElementById("updated").textContent = "Updated " + new Date().toLocaleTimeString("de-DE");
+}
+
+async function loadAll() {
+  document.getElementById("dateLine").textContent = new Date().toLocaleDateString("en-GB", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric"
+  });
+
+  document.getElementById("outfit").innerHTML = '<div class="loading">Loading...</div>';
+  document.getElementById("weather").innerHTML = '<div class="loading">Loading...</div>';
+
+  try {
+    weatherData = await fetchWeather();
+    renderWeather(weatherData);
+    renderOutfit(weatherData, selectedDay);
+  } catch (e) {
+    document.getElementById("weather").innerHTML = `<div class="loading">Failed to load weather</div>`;
+    document.getElementById("outfit").innerHTML = `<div class="loading">Failed to load</div>`;
+  }
+
+  await loadRoutes(selectedDay);
+}
+
+loadAll();
+</script>
+</body>
+</html>
