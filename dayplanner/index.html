@@ -12,6 +12,13 @@
     --text: #e8e8e8;
     --muted: #9aa0a8;
   }
+  :root[data-theme="light"] {
+    --bg: #f2f3f5;
+    --card: #ffffff;
+    --accent: #1d6fd6;
+    --text: #1a1d24;
+    --muted: #6b7280;
+  }
   * { box-sizing: border-box; }
   body {
     margin: 0;
@@ -23,6 +30,20 @@
     margin: 0 auto;
   }
   h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  .header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .theme-toggle {
+    background: var(--card);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    color: var(--text);
+  }
   .subtitle { color: var(--muted); font-size: 0.85rem; margin-bottom: 16px; }
   .card {
     background: var(--card);
@@ -81,6 +102,30 @@
   .route-station {
     color: var(--text);
   }
+  .leave-countdown {
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: 800;
+  }
+  .leave-countdown.urgent {
+    color: #ff6b6b;
+  }
+  .leave-sub {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-top: 4px;
+  }
+  .route-warning {
+    color: #ffb84d;
+    font-size: 0.8rem;
+    margin-top: 4px;
+  }
+  .route-livetag {
+    font-size: 0.75rem;
+    color: #4dff88;
+    margin-left: 4px;
+  }
   .refresh {
     width: 100%;
     padding: 12px;
@@ -118,7 +163,10 @@
 </style>
 </head>
 <body>
-  <h1>Morning Briefing</h1>
+  <div class="header-row">
+    <h1>Morning Briefing</h1>
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙</button>
+  </div>
   <div class="subtitle" id="dateLine"></div>
 
   <button class="refresh" onclick="loadAll()">Refresh</button>
@@ -126,6 +174,11 @@
   <div class="day-toggle">
     <button id="btnToday" class="active" onclick="selectDay(0)">Today</button>
     <button id="btnTomorrow" onclick="selectDay(1)">Tomorrow</button>
+  </div>
+
+  <div class="card" id="leaveByCard" style="display:none">
+    <h2 id="leaveByTitle">Leave By</h2>
+    <div id="leaveBy" class="loading">Loading...</div>
   </div>
 
   <div class="card">
@@ -311,6 +364,10 @@ function summarizeRoute(route) {
       alight: p.to.name,
       boardTime: p.from.plannedDeparture,
       alightTime: p.to.plannedDeparture,
+      realTime: p.realTime,
+      warnings: [...(p.messages || []), ...(p.infos || [])]
+        .map(m => (typeof m === "string" ? m : m.text || m.title || ""))
+        .filter(Boolean),
     }));
 
   return { departure, arrival, durationMs, legs };
@@ -320,16 +377,18 @@ function renderRoutes(elementId, routes) {
   const top = routes.slice(0, 4);
   if (!top.length) {
     document.getElementById(elementId).innerHTML = `<div class="loading">No routes found</div>`;
-    return;
+    return [];
   }
-  const html = top.map(r => {
-    const s = summarizeRoute(r);
+  const summaries = top.map(r => summarizeRoute(r));
+  const html = summaries.map(s => {
     const legsHtml = s.legs.length
       ? s.legs.map(l => `
           <div class="route-leg">
-            <span class="route-line">${l.line}</span> → ${l.direction}<br>
+            <span class="route-line">${l.line}</span> → ${l.direction}
+            ${l.realTime ? '<span class="route-livetag">● live</span>' : ""}<br>
             <span class="route-station">${fmtTime(l.boardTime)} ${l.board}</span> →
             <span class="route-station">${fmtTime(l.alightTime)} ${l.alight}</span>
+            ${l.warnings.map(w => `<div class="route-warning">⚠️ ${w}</div>`).join("")}
           </div>`).join("")
       : `<div class="route-leg">Walk only</div>`;
     return `
@@ -339,6 +398,7 @@ function renderRoutes(elementId, routes) {
       </div>`;
   }).join("");
   document.getElementById(elementId).innerHTML = html;
+  return summaries;
 }
 
 let weatherData = null;
@@ -357,14 +417,51 @@ function selectDay(dayIdx) {
   loadRoutes(dayIdx);
 }
 
+let nextOfficeDeparture = null;
+
+function updateLeaveBy() {
+  const card = document.getElementById("leaveByCard");
+  if (selectedDay !== 0 || !nextOfficeDeparture) {
+    card.style.display = "none";
+    return;
+  }
+  card.style.display = "block";
+  const diffMs = nextOfficeDeparture - new Date();
+  const diffMin = Math.round(diffMs / 60000);
+  const time = fmtTime(nextOfficeDeparture.toISOString());
+
+  let text, urgent = false;
+  if (diffMin <= 0) {
+    text = "Leave now!";
+    urgent = true;
+  } else if (diffMin === 1) {
+    text = "Leave in 1 min";
+    urgent = true;
+  } else {
+    text = `Leave in ${diffMin} min`;
+    urgent = diffMin <= 5;
+  }
+
+  document.getElementById("leaveBy").innerHTML = `
+    <div class="leave-countdown${urgent ? " urgent" : ""}">${text}</div>
+    <div class="leave-sub">First option departs at ${time} toward office</div>
+  `;
+}
+
 async function loadRoutes(dayIdx) {
   document.getElementById("toOffice").innerHTML = '<div class="loading">Loading...</div>';
   document.getElementById("toHome").innerHTML = '<div class="loading">Loading...</div>';
+  nextOfficeDeparture = null;
+  updateLeaveBy();
 
   try {
     const officeTime = routingDateTime(dayIdx, 9, 0);
     const officeRoutes = await fetchRoutes(HOME, OFFICE, officeTime);
-    renderRoutes("toOffice", officeRoutes);
+    const summaries = renderRoutes("toOffice", officeRoutes);
+    if (summaries.length) {
+      nextOfficeDeparture = new Date(summaries[0].departure);
+    }
+    updateLeaveBy();
   } catch (e) {
     document.getElementById("toOffice").innerHTML = `<div class="loading">Failed to load routes</div>`;
   }
@@ -380,27 +477,77 @@ async function loadRoutes(dayIdx) {
   document.getElementById("updated").textContent = "Updated " + new Date().toLocaleTimeString("de-DE");
 }
 
+setInterval(updateLeaveBy, 20000);
+
+// --- Theme toggle ---
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  document.getElementById("themeToggle").textContent = theme === "light" ? "☀️" : "🌙";
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+  const next = current === "light" ? "dark" : "light";
+  localStorage.setItem("theme", next);
+  applyTheme(next);
+}
+
+applyTheme(localStorage.getItem("theme") || "dark");
+
+// --- localStorage cache (instant load + offline fallback) ---
+const CACHE_KEY = "dayplanner_weather_cache";
+
+function loadCachedWeather() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+
+function saveCachedWeather(data) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ data, savedAt: Date.now() }));
+  } catch (e) {}
+}
+
 async function loadAll() {
   document.getElementById("dateLine").textContent = new Date().toLocaleDateString("en-GB", {
     weekday: "long", year: "numeric", month: "long", day: "numeric"
   });
 
-  document.getElementById("outfit").innerHTML = '<div class="loading">Loading...</div>';
-  document.getElementById("weather").innerHTML = '<div class="loading">Loading...</div>';
+  // Show cached weather instantly while fresh data loads
+  const cached = loadCachedWeather();
+  if (cached) {
+    weatherData = cached.data;
+    renderWeather(weatherData);
+    renderOutfit(weatherData, selectedDay);
+  } else {
+    document.getElementById("outfit").innerHTML = '<div class="loading">Loading...</div>';
+    document.getElementById("weather").innerHTML = '<div class="loading">Loading...</div>';
+  }
 
   try {
     weatherData = await fetchWeather();
+    saveCachedWeather(weatherData);
     renderWeather(weatherData);
     renderOutfit(weatherData, selectedDay);
   } catch (e) {
-    document.getElementById("weather").innerHTML = `<div class="loading">Failed to load weather</div>`;
-    document.getElementById("outfit").innerHTML = `<div class="loading">Failed to load</div>`;
+    if (!cached) {
+      document.getElementById("weather").innerHTML = `<div class="loading">Failed to load weather</div>`;
+      document.getElementById("outfit").innerHTML = `<div class="loading">Failed to load</div>`;
+    }
   }
 
   await loadRoutes(selectedDay);
 }
 
 loadAll();
+
+// Auto-refresh every 5 minutes
+setInterval(loadAll, 5 * 60 * 1000);
 </script>
 </body>
 </html>
