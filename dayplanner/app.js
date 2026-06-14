@@ -99,6 +99,8 @@ const OUTFIT_ICONS = {
   // Long overcoat: collar lapels, longer body, centre button placket.
   coat: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 5 5 4 11l2.2.6V21h11.6v-9.4L20 11l-1-6-3-2-3 3-3-3Z"/><path d="M12 6.5V21M11.4 11h.01M11.4 14h.01"/></svg>`,
   umbrella: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 8 0 0 1 9 8H3a9 8 0 0 1 9-8Z"/><path d="M12 11v7a2.5 2.5 0 0 0 5 0"/><path d="M12 3V2"/></svg>`,
+  // Sunglasses — shown on clear/sunny days.
+  glasses: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="10" width="7" height="6" rx="3"/><rect x="14" y="10" width="7" height="6" rx="3"/><path d="M10 12.5q2-1 4 0"/><path d="M3 11 1 8.5M21 11l2-2.5"/></svg>`,
 };
 
 function outfitIcon(key) {
@@ -230,6 +232,24 @@ function daytimeRainChance(data, dayIdx) {
   return daytimeHourlyReduce(data, dayIdx, "precipitation_probability", Math.max, 0);
 }
 
+// Sunglasses suggestion needs at least this many clear waking hours, so a
+// merely partly-sunny day still counts — not just a fully "sunny" daily code.
+const SUNNY_HOURS = 3;
+
+// Count clear/sunny hours during waking hours for the given day.
+function daytimeSunnyHours(data, dayIdx) {
+  const targetDate = data.daily.time[dayIdx];
+  let hours = 0;
+  for (let i = 0; i < data.hourly.time.length; i++) {
+    const [date, time] = data.hourly.time[i].split("T");
+    if (date !== targetDate) continue;
+    const hour = parseInt(time.split(":")[0], 10);
+    if (hour < CONFIG.waking.start || hour > CONFIG.waking.end) continue;
+    if (weatherInfo(data.hourly.weathercode[i])[1] === "sun") hours++;
+  }
+  return hours;
+}
+
 function daytimeMinTemp(data, dayIdx) {
   return daytimeHourlyReduce(data, dayIdx, "temperature_2m", Math.min, Infinity);
 }
@@ -315,26 +335,27 @@ function renderOutfit(data, dayIdx) {
   }
 
   const needsUmbrella = rainProb >= 30;
-  const umbrellaText = needsUmbrella ? "Yes" : "❌ No";
+  const sunny = daytimeSunnyHours(data, dayIdx) >= SUNNY_HOURS;
+
+  // Tiles are conditional: umbrella only when rain's likely, sunglasses on
+  // clear days. Wear + Outerwear are always shown.
+  const sections = [
+    { icon: outfitIcon(wearKey), label: "Wear", text: wearText },
+    { icon: outfitIcon(jacketKey), label: "Outerwear", text: jacketText },
+  ];
+  if (needsUmbrella) sections.push({ icon: outfitIcon("umbrella"), label: "Umbrella", text: "Yes" });
+  if (sunny) sections.push({ icon: outfitIcon("glasses"), label: "Sunglasses", text: "Yes" });
+
+  const tiles = sections.map((s) => `
+      <div class="outfit-section">
+        <div class="outfit-icon">${s.icon}</div>
+        <div class="outfit-label">${s.label}</div>
+        <div class="outfit-text">${s.text}</div>
+      </div>`).join("");
 
   const el = document.getElementById("outfit");
   el.innerHTML = `
-    <div class="outfit-sections">
-      <div class="outfit-section">
-        <div class="outfit-icon">${outfitIcon(wearKey)}</div>
-        <div class="outfit-label">Wear</div>
-        <div class="outfit-text">${wearText}</div>
-      </div>
-      <div class="outfit-section">
-        <div class="outfit-icon">${outfitIcon(jacketKey)}</div>
-        <div class="outfit-label">Outerwear</div>
-        <div class="outfit-text">${jacketText}</div>
-      </div>
-      <div class="outfit-section">
-        <div class="outfit-icon">${outfitIcon("umbrella")}</div>
-        <div class="outfit-label">Umbrella</div>
-        <div class="outfit-text">${umbrellaText}</div>
-      </div>
+    <div class="outfit-sections" style="grid-template-columns:repeat(${sections.length},1fr)">${tiles}
     </div>
     ${notes.length ? `<div class="outfit-notes">${notes.join(" · ")}</div>` : ""}
   `;

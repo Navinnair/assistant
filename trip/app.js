@@ -40,6 +40,8 @@ const OUTFIT_ICONS = {
   // Long overcoat: collar lapels, longer body, centre button placket.
   coat: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 5 5 4 11l2.2.6V21h11.6v-9.4L20 11l-1-6-3-2-3 3-3-3Z"/><path d="M12 6.5V21M11.4 11h.01M11.4 14h.01"/></svg>`,
   umbrella: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 8 0 0 1 9 8H3a9 8 0 0 1 9-8Z"/><path d="M12 11v7a2.5 2.5 0 0 0 5 0"/><path d="M12 3V2"/></svg>`,
+  // Sunglasses — shown on clear/sunny days.
+  glasses: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="10" width="7" height="6" rx="3"/><rect x="14" y="10" width="7" height="6" rx="3"/><path d="M10 12.5q2-1 4 0"/><path d="M3 11 1 8.5M21 11l2-2.5"/></svg>`,
 };
 function outfitIcon(key) { return key === "sun" ? weatherIcon("sun", 28) : (OUTFIT_ICONS[key] || ""); }
 
@@ -57,6 +59,23 @@ function daytimeReduce(data, dayIdx, field, fn, init) {
     res = fn(res, v); seen = true;
   }
   return seen ? res : null;
+}
+
+// Sunglasses needs at least this many clear waking hours.
+const SUNNY_HOURS = 3;
+
+// Count clear/sunny waking hours for the given day.
+function sunnyHours(data, dayIdx) {
+  const date = data.daily.time[dayIdx];
+  let hours = 0;
+  for (let i = 0; i < data.hourly.time.length; i++) {
+    const [d, t] = data.hourly.time[i].split("T");
+    if (d !== date) continue;
+    const h = parseInt(t.split(":")[0], 10);
+    if (h < WAKING.start || h > WAKING.end) continue;
+    if (weatherInfo(data.hourly.weathercode[i])[1] === "sun") hours++;
+  }
+  return hours;
 }
 
 // Outfit decision — same thresholds as the Office planner.
@@ -230,13 +249,27 @@ function editSearch() {
   document.getElementById("tripSummary").style.display = "none";
 }
 
-// Trip-wide aggregate: coldest day drives wear/coat, any rainy day → umbrella.
+// Outfit tiles, conditional: umbrella only when rain's likely, sunglasses on
+// clear days. Wear + Outerwear always shown. Grid sizes to the tile count.
+function outfitTiles(o, sunny) {
+  const tiles = [
+    `<div class="day-tile"><div class="t-ic">${outfitIcon(o.wearKey)}</div><div class="t-label">Wear</div><div class="t-text">${o.wearText}</div></div>`,
+    `<div class="day-tile"><div class="t-ic">${outfitIcon(o.jacketKey)}</div><div class="t-label">Outerwear</div><div class="t-text">${o.jacketText}</div></div>`,
+  ];
+  if (o.umbrella) tiles.push(`<div class="day-tile"><div class="t-ic">${outfitIcon("umbrella")}</div><div class="t-label">Umbrella</div><div class="t-text">Yes</div></div>`);
+  if (sunny) tiles.push(`<div class="day-tile"><div class="t-ic">${outfitIcon("glasses")}</div><div class="t-label">Sunglasses</div><div class="t-text">Yes</div></div>`);
+  return `<div class="day-outfit" style="grid-template-columns:repeat(${tiles.length},1fr)">${tiles.join("")}</div>`;
+}
+
+// Trip-wide aggregate: coldest day drives wear/coat, any rainy day → umbrella,
+// any clear day → sunglasses.
 function tripOverall(data) {
   const days = data.daily.time;
-  let minT = Infinity, maxT = -Infinity, maxRain = 0, maxWind = 0, valid = 0;
+  let minT = Infinity, maxT = -Infinity, maxRain = 0, maxWind = 0, valid = 0, anySunny = false;
   for (let i = 0; i < days.length; i++) {
     if (data.daily.temperature_2m_max[i] == null) continue;
     valid++;
+    if (sunnyHours(data, i) >= SUNNY_HOURS) anySunny = true;
     const dMin = daytimeReduce(data, i, "temperature_2m", Math.min, Infinity);
     const dRain = daytimeReduce(data, i, "precipitation_probability", Math.max, 0);
     const dWind = daytimeReduce(data, i, "windspeed_10m", Math.max, 0);
@@ -246,7 +279,7 @@ function tripOverall(data) {
     maxWind = Math.max(maxWind, dWind == null ? data.daily.windspeed_10m_max[i] : dWind);
   }
   if (!valid) return null;
-  return { minT, maxT, maxRain, maxWind, outfit: computeOutfit(minT, maxRain, maxWind) };
+  return { minT, maxT, maxRain, maxWind, sunny: anySunny, outfit: computeOutfit(minT, maxRain, maxWind) };
 }
 
 function overallCard(place, days, ov) {
@@ -255,11 +288,7 @@ function overallCard(place, days, ov) {
     <div class="overall-card">
       <div class="overall-head">Pack for ${place.short} · ${fmtDayDate(days[0])} – ${fmtDayDate(days[days.length - 1])}</div>
       <div class="overall-range">${Math.round(ov.minT)}° to ${Math.round(ov.maxT)}° · 🌧️ up to ${Math.round(ov.maxRain)}%</div>
-      <div class="day-outfit">
-        <div class="day-tile"><div class="t-ic">${outfitIcon(o.wearKey)}</div><div class="t-label">Wear</div><div class="t-text">${o.wearText}</div></div>
-        <div class="day-tile"><div class="t-ic">${outfitIcon(o.jacketKey)}</div><div class="t-label">Outerwear</div><div class="t-text">${o.jacketText}</div></div>
-        <div class="day-tile"><div class="t-ic">${outfitIcon("umbrella")}</div><div class="t-label">Umbrella</div><div class="t-text">${o.umbrella ? "Yes" : "❌ No"}</div></div>
-      </div>
+      ${outfitTiles(o, ov.sunny)}
       <div class="overall-note">Covers the coldest/wettest day of the trip${o.notes.length ? " · " + o.notes.join(" · ") : ""}</div>
     </div>`;
 }
@@ -293,11 +322,7 @@ function renderTrip(place, data) {
           <div class="day-temp">${min}° / ${max}°</div>
         </div>
         <div class="day-meta">🌧️ ${dayRain == null ? "–" : dayRain + "%"} · 💨 ${dayWind} km/h</div>
-        <div class="day-outfit">
-          <div class="day-tile"><div class="t-ic">${outfitIcon(o.wearKey)}</div><div class="t-label">Wear</div><div class="t-text">${o.wearText}</div></div>
-          <div class="day-tile"><div class="t-ic">${outfitIcon(o.jacketKey)}</div><div class="t-label">Outerwear</div><div class="t-text">${o.jacketText}</div></div>
-          <div class="day-tile"><div class="t-ic">${outfitIcon("umbrella")}</div><div class="t-label">Umbrella</div><div class="t-text">${o.umbrella ? "Yes" : "❌ No"}</div></div>
-        </div>
+        ${outfitTiles(o, sunnyHours(data, i) >= SUNNY_HOURS)}
         ${o.notes.length ? `<div class="day-note">${o.notes.join(" · ")}</div>` : ""}
       </div>`;
   }).join("");
