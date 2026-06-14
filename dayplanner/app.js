@@ -12,6 +12,8 @@ const CONFIG = {
   // Minimum head start before a train counts as catchable — skip trains you'd
   // need to bolt for in under this many minutes (grab-bag/reaction time).
   prepBufferMin: 3,
+  // Show the disruption banner when the chosen train is at least this late.
+  disruptionDelayMin: 5,
   // Waking-hours window (24h) for outfit/umbrella decisions and the forecast.
   waking: { start: 8, end: 21 },
   // Auto-refresh cadence.
@@ -703,6 +705,7 @@ function updateLeaveBy() {
     card.style.display = "none";
     leaveActive = false;
     updateLeaveBar();
+    document.getElementById("disruptionBanner").style.display = "none";
     return;
   }
   card.style.display = "block";
@@ -759,6 +762,22 @@ function updateLeaveBy() {
     <div class="leave-sub">${chosen.walk ? `${chosen.walk.minutes} min walk to ${chosen.walk.dest}` : "no walk needed"}</div>
   `;
   flashIn(el);
+
+  // Disruption banner: flag the chosen train when it's cancelled, badly late,
+  // or carries a service message — so you catch it without scrolling.
+  const banner = document.getElementById("disruptionBanner");
+  const warns = chosen.legs.flatMap((l) => l.warnings);
+  let bMsg = "", bLevel = "warn";
+  if (routeCancelled(chosen)) { bMsg = `⚠ ${lineLabel} cancelled — check alternatives below`; bLevel = "bad"; }
+  else if (delayMin >= CONFIG.disruptionDelayMin) { bMsg = `⚠ ${lineLabel} running ${delayMin} min late`; bLevel = "warn"; }
+  else if (warns.length) { bMsg = `⚠ ${warns[0]}`; bLevel = "warn"; }
+  if (bMsg) {
+    banner.textContent = bMsg;
+    banner.className = "disruption-banner " + bLevel;
+    banner.style.display = "block";
+  } else {
+    banner.style.display = "none";
+  }
 
   // Feed the slim sticky bar (shown when this card is scrolled out of view).
   const dirIcon = selectedDirection === "office" ? "🏢" : "🏠";
