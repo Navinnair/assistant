@@ -4,25 +4,39 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Day Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
+  /* Color tokens (Material 3 shape/spacing, professional slate/blue palette) */
   :root {
-    --bg: #0f1115;
-    --card: #1a1d24;
-    --accent: #4da3ff;
-    --text: #e8e8e8;
-    --muted: #9aa0a8;
+    --bg: #0b0e14;
+    --card: #151920;
+    --card-high: #1e2430;
+    --accent: #5b9dff;
+    --on-accent: #ffffff;
+    --primary-container: #1f3a5f;
+    --on-primary-container: #cfe3ff;
+    --text: #e7eaf0;
+    --muted: #8b95a5;
+    --outline: #2a313d;
   }
   :root[data-theme="light"] {
-    --bg: #f2f3f5;
+    --bg: #f7f8fa;
     --card: #ffffff;
-    --accent: #1d6fd6;
-    --text: #1a1d24;
-    --muted: #6b7280;
+    --card-high: #eef1f5;
+    --accent: #2f6fed;
+    --on-accent: #ffffff;
+    --primary-container: #e3edff;
+    --on-primary-container: #1a3a6e;
+    --text: #1a2230;
+    --muted: #6b7585;
+    --outline: #dde2e8;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'Roboto', -apple-system, Segoe UI, Helvetica, Arial, sans-serif;
     background: var(--bg);
     color: var(--text);
     padding: 16px;
@@ -31,10 +45,10 @@
     -webkit-font-smoothing: antialiased;
   }
   h1 {
-    font-size: 1.5rem;
-    font-weight: 800;
+    font-size: 1.75rem;
+    font-weight: 400;
     margin: 0 0 4px;
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
   }
   .header-row {
     display: flex;
@@ -46,32 +60,33 @@
     gap: 8px;
   }
   .theme-toggle {
-    background: var(--card);
-    border: 1px solid rgba(128,128,128,0.15);
-    border-radius: 10px;
-    padding: 8px 12px;
-    font-size: 1.1rem;
+    background: var(--card-high);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    font-size: 1.15rem;
     cursor: pointer;
     color: var(--text);
-    transition: transform 0.15s ease;
+    transition: transform 0.15s ease, background 0.2s ease;
   }
   .theme-toggle:active { transform: scale(0.92); }
-  .subtitle { color: var(--muted); font-size: 0.85rem; margin-bottom: 16px; }
+  .subtitle { color: var(--muted); font-size: 0.875rem; margin-bottom: 16px; }
   .card {
     background: var(--card);
-    border: 1px solid rgba(128,128,128,0.1);
-    border-radius: 16px;
-    padding: 16px 18px;
-    margin-bottom: 14px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    border: none;
+    border-radius: 24px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
   }
   .card h2 {
-    font-size: 0.95rem;
-    font-weight: 700;
+    font-size: 0.8125rem;
+    font-weight: 500;
     margin: 0 0 12px;
-    color: var(--accent);
+    color: var(--muted);
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.08em;
   }
   .weather-grid {
     display: grid;
@@ -81,8 +96,8 @@
   .weather-col {
     text-align: center;
     padding: 12px 8px;
-    border-radius: 12px;
-    background: rgba(128,128,128,0.06);
+    border-radius: 16px;
+    background: var(--card-high);
   }
   .weather-icon { margin: 0 auto 4px; }
   .weather-day { font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; }
@@ -93,10 +108,10 @@
   .outfit-text { text-align: center; font-size: 1.05rem; font-weight: 700; }
   .outfit-notes { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 6px; }
   .route {
-    border-left: 3px solid var(--accent);
-    border-radius: 0 10px 10px 0;
-    background: rgba(128,128,128,0.05);
-    padding: 8px 12px;
+    border-left: 4px solid var(--accent);
+    border-radius: 4px 16px 16px 4px;
+    background: var(--card-high);
+    padding: 10px 14px;
     margin-bottom: 8px;
   }
   .route:last-child { margin-bottom: 0; }
@@ -127,24 +142,56 @@
     color: var(--text);
   }
   #leaveByCard {
-    background: linear-gradient(135deg, var(--accent), #6a5cff);
+    background: var(--primary-container);
     border: none;
   }
-  #leaveByCard h2 { color: rgba(255,255,255,0.85); }
-  .leave-countdown {
+  #leaveByCard h2 { color: var(--on-primary-container); opacity: 0.7; }
+  .leave-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .leave-col {
     text-align: center;
-    font-size: 2.2rem;
-    font-weight: 800;
-    color: #fff;
+    padding: 10px;
+    border-radius: 16px;
+    background: rgba(0,0,0,0.08);
+  }
+  :root[data-theme="light"] .leave-col {
+    background: rgba(255,255,255,0.5);
+  }
+  .leave-label {
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--on-primary-container);
+    opacity: 0.7;
+    margin-bottom: 4px;
+  }
+  .leave-clock {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--on-primary-container);
+  }
+  .leave-countdown {
+    font-size: 1.05rem;
+    font-weight: 500;
+    color: var(--on-primary-container);
+    margin-top: 2px;
   }
   .leave-countdown.urgent {
-    color: #ffe066;
+    color: #ffb4ab;
+  }
+  :root[data-theme="light"] .leave-countdown.urgent {
+    color: #ba1a1a;
   }
   .leave-sub {
     text-align: center;
-    color: rgba(255,255,255,0.85);
-    font-size: 0.85rem;
-    margin-top: 4px;
+    color: var(--on-primary-container);
+    opacity: 0.7;
+    font-size: 0.8rem;
+    margin-top: 8px;
   }
   .route-warning {
     color: #ffb84d;
@@ -160,28 +207,28 @@
   .updated { text-align: center; color: var(--muted); font-size: 0.75rem; margin-top: 8px; }
   .day-toggle {
     display: flex;
-    gap: 8px;
     margin-bottom: 14px;
-    background: var(--card);
-    border-radius: 12px;
-    padding: 4px;
-    border: 1px solid rgba(128,128,128,0.1);
+    border: 1px solid var(--outline);
+    border-radius: 20px;
+    overflow: hidden;
   }
   .day-toggle button {
     flex: 1;
-    padding: 9px;
+    padding: 10px;
     border: none;
-    border-radius: 9px;
-    font-size: 0.95rem;
-    font-weight: 700;
+    border-right: 1px solid var(--outline);
+    font-size: 0.875rem;
+    font-weight: 500;
     cursor: pointer;
     background: transparent;
-    color: var(--muted);
+    color: var(--text);
     transition: background 0.2s ease, color 0.2s ease;
   }
+  .day-toggle button:last-child { border-right: none; }
   .day-toggle button.active {
-    background: var(--accent);
-    color: #fff;
+    background: var(--primary-container);
+    color: var(--on-primary-container);
+    font-weight: 700;
   }
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(4px); }
@@ -206,7 +253,7 @@
   </div>
 
   <div class="card" id="leaveByCard" style="display:none">
-    <h2 id="leaveByTitle">Leave By</h2>
+    <h2 id="leaveByTitle">Time to Go</h2>
     <div id="leaveBy" class="loading">Loading...</div>
   </div>
 
@@ -474,35 +521,64 @@ function selectDay(dayIdx) {
   loadRoutes(dayIdx);
 }
 
-let nextOfficeDeparture = null;
+let officeSummaries = [];
+
+// Walking time from home to the first station/stop
+const WALK_TO_STATION_MIN = 5;
+// Below this many minutes-to-leave, the countdown is shown as urgent
+const URGENT_THRESHOLD_MIN = 4;
 
 function updateLeaveBy() {
   const card = document.getElementById("leaveByCard");
-  if (selectedDay !== 0 || !nextOfficeDeparture) {
+  if (selectedDay !== 0 || !officeSummaries.length) {
     card.style.display = "none";
     return;
   }
   card.style.display = "block";
-  const diffMs = nextOfficeDeparture - new Date();
-  const diffMin = Math.round(diffMs / 60000);
-  const time = fmtTime(nextOfficeDeparture.toISOString());
+  const now = new Date();
 
-  let text, urgent = false;
-  if (diffMin <= 0) {
-    text = "Leave now!";
-    urgent = true;
-  } else if (diffMin === 1) {
-    text = "Leave in 1 min";
-    urgent = true;
-  } else {
-    text = `Leave in ${diffMin} min`;
-    urgent = diffMin <= 5;
+  // "Leave home" time = departure minus the walk to the station.
+  // Pick the first option you can still realistically catch; if every
+  // option is already too tight, fall back to the last one and show "Leave now!".
+  let chosen = officeSummaries[officeSummaries.length - 1];
+  for (const s of officeSummaries) {
+    const leaveTime = new Date(new Date(s.departure) - WALK_TO_STATION_MIN * 60000);
+    if (leaveTime > now) {
+      chosen = s;
+      break;
+    }
   }
+
+  const leaveTime = new Date(new Date(chosen.departure) - WALK_TO_STATION_MIN * 60000);
+  const departTime = new Date(chosen.departure);
+
+  const leaveDiff = Math.round((leaveTime - now) / 60000);
+  const departDiff = Math.round((departTime - now) / 60000);
+
+  function countdownText(diffMin) {
+    if (diffMin <= 0) return ["Now!", true];
+    if (diffMin === 1) return ["1 min", true];
+    return [`${diffMin} min`, diffMin <= URGENT_THRESHOLD_MIN];
+  }
+
+  const [leaveText, leaveUrgent] = countdownText(leaveDiff);
+  const [departText, departUrgent] = countdownText(departDiff);
 
   const el = document.getElementById("leaveBy");
   el.innerHTML = `
-    <div class="leave-countdown${urgent ? " urgent" : ""}">${text}</div>
-    <div class="leave-sub">First option departs at ${time} toward office</div>
+    <div class="leave-grid">
+      <div class="leave-col">
+        <div class="leave-label">Leave home</div>
+        <div class="leave-clock">${fmtTime(leaveTime.toISOString())}</div>
+        <div class="leave-countdown${leaveUrgent ? " urgent" : ""}">${leaveText}</div>
+      </div>
+      <div class="leave-col">
+        <div class="leave-label">Departure (${chosen.legs[0] ? chosen.legs[0].line : "walk"})</div>
+        <div class="leave-clock">${fmtTime(chosen.departure)}</div>
+        <div class="leave-countdown${departUrgent ? " urgent" : ""}">${departText}</div>
+      </div>
+    </div>
+    <div class="leave-sub">${WALK_TO_STATION_MIN} min walk to station</div>
   `;
   flashIn(el);
 }
@@ -510,16 +586,13 @@ function updateLeaveBy() {
 async function loadRoutes(dayIdx) {
   document.getElementById("toOffice").innerHTML = '<div class="loading">Loading...</div>';
   document.getElementById("toHome").innerHTML = '<div class="loading">Loading...</div>';
-  nextOfficeDeparture = null;
+  officeSummaries = [];
   updateLeaveBy();
 
   try {
     const officeTime = routingDateTime(dayIdx, 9, 0);
     const officeRoutes = await fetchRoutes(HOME, OFFICE, officeTime);
-    const summaries = renderRoutes("toOffice", officeRoutes);
-    if (summaries.length) {
-      nextOfficeDeparture = new Date(summaries[0].departure);
-    }
+    officeSummaries = renderRoutes("toOffice", officeRoutes);
     updateLeaveBy();
   } catch (e) {
     document.getElementById("toOffice").innerHTML = `<div class="loading">Failed to load routes</div>`;
@@ -536,7 +609,7 @@ async function loadRoutes(dayIdx) {
   document.getElementById("updated").textContent = "Updated " + new Date().toLocaleTimeString("de-DE");
 }
 
-setInterval(updateLeaveBy, 20000);
+setInterval(updateLeaveBy, 15000);
 
 // --- Theme toggle ---
 function applyTheme(theme) {
