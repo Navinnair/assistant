@@ -17,49 +17,52 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="header-row">
+  <header class="header-row">
     <h1>Office Planner</h1>
     <div class="header-actions">
-      <button class="theme-toggle" id="refreshBtn" onclick="loadAll()" title="Refresh" aria-label="Refresh"></button>
-      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme"></button>
+      <button class="theme-toggle" id="refreshBtn" onclick="loadAll()" title="Refresh" aria-label="Refresh data"></button>
+      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle light/dark theme"></button>
     </div>
-  </div>
-  <div class="subtitle" id="dateLine"></div>
-  <div class="weather-strip loading" id="weatherStrip">Loading...</div>
+  </header>
+  <p class="subtitle" id="dateLine"></p>
+  <p class="weather-strip loading" id="weatherStrip" aria-label="Weather summary">Loading...</p>
 
-  <div class="day-toggle dir-toggle">
-    <button id="btnDirHome" onclick="selectDirection('home')">🏠 Home</button>
-    <button id="btnDirOffice" class="active" onclick="selectDirection('office')">🏢 Office</button>
-  </div>
-
-  <div class="day-toggle">
-    <button id="btnToday" class="active" onclick="selectDay(0)">Today</button>
-    <button id="btnTomorrow" onclick="selectDay(1)">Tomorrow</button>
+  <main>
+  <div class="day-toggle dir-toggle" role="group" aria-label="Direction">
+    <button id="btnDirHome" onclick="selectDirection('home')" aria-pressed="false">🏠 Home</button>
+    <button id="btnDirOffice" class="active" onclick="selectDirection('office')" aria-pressed="true">🏢 Office</button>
   </div>
 
-  <div class="card" id="leaveByCard" style="display:none">
+  <div class="day-toggle" role="group" aria-label="Day">
+    <button id="btnToday" class="active" onclick="selectDay(0)" aria-pressed="true">Today</button>
+    <button id="btnTomorrow" onclick="selectDay(1)" aria-pressed="false">Tomorrow</button>
+  </div>
+
+  <section class="card" id="leaveByCard" style="display:none" aria-labelledby="leaveByTitle">
     <h2 id="leaveByTitle">Time to Go</h2>
-    <div id="leaveBy" class="loading">Loading...</div>
-  </div>
+    <div id="leaveBy" class="loading" aria-live="polite">Loading...</div>
+  </section>
 
-  <div class="card">
+  <section class="card" aria-labelledby="outfitTitle">
     <h2 id="outfitTitle">Outfit for Today</h2>
     <div id="outfit" class="loading">Loading...</div>
-  </div>
+  </section>
 
-  <div class="card">
-    <h2>Hourly Forecast</h2>
+  <section class="card" aria-labelledby="weatherTitle">
+    <h2 id="weatherTitle">Hourly Forecast</h2>
     <div id="weather" class="loading">Loading...</div>
-  </div>
+  </section>
 
-  <div class="card">
+  <section class="card" aria-labelledby="routesTitle">
     <h2 id="routesTitle">To Home (Riesenfeldstr. 10) — Today</h2>
-    <div id="routesStale" class="stale-note" style="display:none"></div>
+    <div id="routesStale" class="stale-note" style="display:none" aria-live="polite"></div>
     <div id="routesList" class="loading">Loading...</div>
+    <div id="routesEmpty" class="loading" style="display:none">No upcoming departures right now.</div>
     <button id="showMoreBtn" class="show-more" style="display:none" onclick="showMoreRoutes()">Show 5 more</button>
-  </div>
+  </section>
+  </main>
 
-  <div class="updated" id="updated"></div>
+  <p class="updated" id="updated" aria-live="polite"></p>
 
 <script src="app.js"></script>
 </body>

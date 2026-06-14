@@ -429,7 +429,12 @@ const TYPE_COLORS = {
   BUS: "#00586A", REGIONAL_BUS: "#00586A", BAHN: "#5b6770",
 };
 function lineColor(line, type) {
-  return LINE_COLORS[line] || TYPE_COLORS[type] || "#5b6770";
+  if (LINE_COLORS[line]) return LINE_COLORS[line];
+  // Munich line-family conventions for anything without an explicit color.
+  if (/^N\d/i.test(line)) return "#2b2d42";  // night lines (NachtTram/NachtBus)
+  if (/^X\d/i.test(line)) return "#6a1b9a";  // express buses
+  if (/^5[0-9]$|^6[0-8]$/.test(line)) return "#004f6e"; // MetroBus (50–68), bolder blue
+  return TYPE_COLORS[type] || "#5b6770";
 }
 
 // Color tier for a "minutes from now" value: urgent (red) / soon (amber) / ok.
@@ -467,7 +472,11 @@ function showRoutesError() {
 
 function renderRoutes(elementId, summaries, count) {
   if (!summaries.length) {
-    document.getElementById(elementId).innerHTML = `<div class="loading">No routes found</div>`;
+    document.getElementById(elementId).innerHTML = `<div class="loading">No departures found for this window.</div>`;
+    const empty = document.getElementById("routesEmpty");
+    if (empty) empty.style.display = "none";
+    const more = document.getElementById("showMoreBtn");
+    if (more) more.style.display = "none";
     return;
   }
   const shown = summaries.slice(0, count);
@@ -518,8 +527,9 @@ function renderRoutes(elementId, summaries, count) {
 function refreshRouteLive() {
   const list = document.getElementById("routesList");
   if (!list) return;
+  const emptyEl = document.getElementById("routesEmpty");
   const rows = list.querySelectorAll(".route");
-  if (!rows.length) return;
+  if (!rows.length) { if (emptyEl) emptyEl.style.display = "none"; return; }
 
   const summaries = routeCache[selectedDirection];
   const now = new Date();
@@ -559,6 +569,9 @@ function refreshRouteLive() {
     }
     if (num) num.textContent = ++visibleNum;
   });
+
+  // All options have departed (stale data / late night) — show a friendly note.
+  if (emptyEl) emptyEl.style.display = (live && visibleNum === 0) ? "" : "none";
 }
 
 let weatherData = null;
@@ -567,6 +580,13 @@ let selectedDirection = "office"; // "home" or "office" — master toggle, defau
 let visibleCount = 5;
 let routeCache = { home: null, office: null };
 let enriched = { home: false, office: false }; // live delays applied this load?
+
+// Toggle a segmented button's active state + its aria-pressed.
+function setToggle(id, on) {
+  const btn = document.getElementById(id);
+  btn.classList.toggle("active", on);
+  btn.setAttribute("aria-pressed", on ? "true" : "false");
+}
 
 function routesTitleFor(direction, dayIdx) {
   const label = dayIdx === 0 ? "Today" : "Tomorrow";
@@ -577,8 +597,8 @@ function routesTitleFor(direction, dayIdx) {
 
 function selectDay(dayIdx) {
   selectedDay = dayIdx;
-  document.getElementById("btnToday").classList.toggle("active", dayIdx === 0);
-  document.getElementById("btnTomorrow").classList.toggle("active", dayIdx === 1);
+  setToggle("btnToday", dayIdx === 0);
+  setToggle("btnTomorrow", dayIdx === 1);
   const label = dayIdx === 0 ? "Today" : "Tomorrow";
   document.getElementById("outfitTitle").textContent = `Outfit for ${label}`;
   document.getElementById("routesTitle").textContent = routesTitleFor(selectedDirection, dayIdx);
@@ -593,8 +613,8 @@ function selectDay(dayIdx) {
 function selectDirection(direction) {
   selectedDirection = direction;
   visibleCount = 5;
-  document.getElementById("btnDirHome").classList.toggle("active", direction === "home");
-  document.getElementById("btnDirOffice").classList.toggle("active", direction === "office");
+  setToggle("btnDirHome", direction === "home");
+  setToggle("btnDirOffice", direction === "office");
   document.getElementById("routesTitle").textContent = routesTitleFor(direction, selectedDay);
 
   const cached = routeCache[direction];
@@ -873,8 +893,8 @@ async function loadAll() {
   await loadRoutes(selectedDay);
 }
 
-document.getElementById("btnDirHome").classList.toggle("active", selectedDirection === "home");
-document.getElementById("btnDirOffice").classList.toggle("active", selectedDirection === "office");
+setToggle("btnDirHome", selectedDirection === "home");
+setToggle("btnDirOffice", selectedDirection === "office");
 document.getElementById("routesTitle").textContent = routesTitleFor(selectedDirection, selectedDay);
 
 loadAll();
