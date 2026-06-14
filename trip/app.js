@@ -140,7 +140,6 @@ async function planTrip(e) {
   const start = document.getElementById("start").value;
   const end = document.getElementById("end").value;
   document.getElementById("tripResults").innerHTML = "";
-  document.getElementById("tripHeading").style.display = "none";
   document.getElementById("placeMatches").style.display = "none";
 
   if (!dest || !start || !end) return false;
@@ -175,6 +174,7 @@ function renderPlaceChips(places, start, end) {
   });
 }
 
+let currentStart = "", currentEnd = "";
 async function runPlan(place, start, end) {
   status(`Loading weather for ${place.short}…`);
   let data;
@@ -184,16 +184,63 @@ async function runPlan(place, start, end) {
     status("No forecast for those dates (try within the next ~16 days).");
     return;
   }
+  currentStart = start; currentEnd = end;
   renderTrip(place, data);
+  collapseSearch(place, data.daily.time);
   status("");
+}
+
+// Collapse the form into a compact bar so results get the space.
+function collapseSearch(place, days) {
+  document.getElementById("tripForm").style.display = "none";
+  const bar = document.getElementById("tripSummary");
+  bar.innerHTML = `<span>🧳 ${place.short}</span>` +
+    `<span class="ts-dates">${fmtDayDate(days[0])} – ${fmtDayDate(days[days.length - 1])}</span>` +
+    `<span class="ts-change">✎ Change</span>`;
+  bar.style.display = "flex";
+}
+
+function editSearch() {
+  document.getElementById("tripForm").style.display = "flex";
+  document.getElementById("tripSummary").style.display = "none";
+}
+
+// Trip-wide aggregate: coldest day drives wear/coat, any rainy day → umbrella.
+function tripOverall(data) {
+  const days = data.daily.time;
+  let minT = Infinity, maxT = -Infinity, maxRain = 0, maxWind = 0, valid = 0;
+  for (let i = 0; i < days.length; i++) {
+    if (data.daily.temperature_2m_max[i] == null) continue;
+    valid++;
+    const dMin = daytimeReduce(data, i, "temperature_2m", Math.min, Infinity);
+    const dRain = daytimeReduce(data, i, "precipitation_probability", Math.max, 0);
+    const dWind = daytimeReduce(data, i, "windspeed_10m", Math.max, 0);
+    minT = Math.min(minT, dMin == null ? data.daily.temperature_2m_min[i] : dMin);
+    maxT = Math.max(maxT, data.daily.temperature_2m_max[i]);
+    maxRain = Math.max(maxRain, dRain == null ? (data.daily.precipitation_probability_max[i] || 0) : dRain);
+    maxWind = Math.max(maxWind, dWind == null ? data.daily.windspeed_10m_max[i] : dWind);
+  }
+  if (!valid) return null;
+  return { minT, maxT, maxRain, maxWind, outfit: computeOutfit(minT, maxRain, maxWind) };
+}
+
+function overallCard(place, days, ov) {
+  const o = ov.outfit;
+  return `
+    <div class="overall-card">
+      <div class="overall-head">Pack for ${place.short} · ${fmtDayDate(days[0])} – ${fmtDayDate(days[days.length - 1])}</div>
+      <div class="overall-range">${Math.round(ov.minT)}° to ${Math.round(ov.maxT)}° · 🌧️ up to ${Math.round(ov.maxRain)}%</div>
+      <div class="day-outfit">
+        <div class="day-tile"><div class="t-ic">${outfitIcon(o.wearKey)}</div><div class="t-label">Wear</div><div class="t-text">${o.wearText}</div></div>
+        <div class="day-tile"><div class="t-ic">${outfitIcon(o.jacketKey)}</div><div class="t-label">Outerwear</div><div class="t-text">${o.jacketText}</div></div>
+        <div class="day-tile"><div class="t-ic">${outfitIcon("umbrella")}</div><div class="t-label">Umbrella</div><div class="t-text">${o.umbrella ? "Yes" : "❌ No"}</div></div>
+      </div>
+      <div class="overall-note">Covers the coldest/wettest day of the trip${o.notes.length ? " · " + o.notes.join(" · ") : ""}</div>
+    </div>`;
 }
 
 function renderTrip(place, data) {
   const days = data.daily.time;
-  const heading = document.getElementById("tripHeading");
-  heading.innerHTML = `${place.label}<span class="sub"> · ${fmtDayDate(days[0])} – ${fmtDayDate(days[days.length - 1])}</span>`;
-  heading.style.display = "block";
-
   const cards = days.map((date, i) => {
     const code = data.daily.weathercode[i];
     if (code == null || data.daily.temperature_2m_max[i] == null) {
@@ -230,5 +277,7 @@ function renderTrip(place, data) {
       </div>`;
   }).join("");
 
-  document.getElementById("tripResults").innerHTML = `<div class="day-grid">${cards}</div>`;
+  const ov = tripOverall(data);
+  const overall = ov ? overallCard(place, days, ov) : "";
+  document.getElementById("tripResults").innerHTML = overall + `<div class="day-grid">${cards}</div>`;
 }
