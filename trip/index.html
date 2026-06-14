@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Trip Planner</title>
+<meta name="theme-color" content="#0a0c10">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="header-row">
+    <h1>Trip Planner</h1>
+    <div class="header-actions">
+      <a class="icon-btn" href="../" title="All apps" aria-label="Back to home page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></a>
+      <button class="icon-btn" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle light/dark theme"></button>
+    </div>
+  </header>
+  <p class="subtitle">Pick a place and dates — get the weather and what to wear each day.</p>
+
+  <form class="card trip-form" id="tripForm" onsubmit="return planTrip(event)">
+    <label class="field">
+      <span>Where to?</span>
+      <input id="dest" type="text" placeholder="City or place (e.g. Berlin)" autocomplete="off" required>
+    </label>
+    <div id="placeMatches" class="place-matches" style="display:none"></div>
+    <div class="date-row">
+      <label class="field"><span>From</span><input id="start" type="date" required></label>
+      <label class="field"><span>To</span><input id="end" type="date" required></label>
+    </div>
+    <button type="submit" class="plan-btn">Plan trip</button>
+  </form>
+
+  <div id="tripStatus" class="status" aria-live="polite"></div>
+  <h2 id="tripHeading" class="trip-heading" style="display:none"></h2>
+  <div id="tripResults"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
