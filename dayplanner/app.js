@@ -250,6 +250,7 @@ function renderWeather(data, dayIdx) {
     <span class="ws-sep">·</span>
     <span>🌧️ ${rain}%</span>
     <span>💨 ${wind} km/h</span>
+    <span class="strip-chevron">⌄</span>
   `;
 
   // Hourly forecast card.
@@ -931,6 +932,19 @@ function toggleTheme() {
 }
 
 applyTheme(localStorage.getItem("theme") || "dark");
+
+// --- Hourly forecast: collapsible under the weather strip ---
+function setHourly(open) {
+  document.getElementById("hourlyWrap").style.display = open ? "block" : "none";
+  document.getElementById("weatherStrip").setAttribute("aria-expanded", open ? "true" : "false");
+  document.getElementById("weatherStrip").classList.toggle("open", open);
+}
+function toggleHourly() {
+  const open = document.getElementById("hourlyWrap").style.display === "none";
+  localStorage.setItem("hourly_open", open ? "1" : "0");
+  setHourly(open);
+}
+setHourly(localStorage.getItem("hourly_open") === "1"); // default collapsed
 
 // --- localStorage cache (instant load + offline fallback) ---
 const CACHE_KEY = "dayplanner_weather_cache";

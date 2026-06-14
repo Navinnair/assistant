@@ -27,7 +27,10 @@
     </div>
   </header>
   <p class="subtitle" id="dateLine"></p>
-  <p class="weather-strip loading" id="weatherStrip" aria-label="Weather summary">Loading...</p>
+  <button class="weather-strip loading" id="weatherStrip" aria-label="Weather summary — tap for hourly" aria-expanded="false" onclick="toggleHourly()">Loading...</button>
+  <div class="hourly-wrap" id="hourlyWrap" style="display:none">
+    <div id="weather" class="loading">Loading...</div>
+  </div>
 
   <main>
   <div class="day-toggle dir-toggle" role="group" aria-label="Direction">
@@ -50,11 +53,6 @@
   <section class="card" aria-labelledby="outfitTitle">
     <h2 id="outfitTitle">Outfit for Today</h2>
     <div id="outfit" class="loading">Loading...</div>
-  </section>
-
-  <section class="card" aria-labelledby="weatherTitle">
-    <h2 id="weatherTitle">Hourly Forecast</h2>
-    <div id="weather" class="loading">Loading...</div>
   </section>
 
   <section class="card" aria-labelledby="routesTitle">

@@ -105,14 +105,36 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 6px;
+    width: 100%;
+    margin: 0 0 16px;
+    padding: 0;
+    border: none;
+    background: none;
+    text-align: left;
     font-size: 0.85rem;
+    font-family: inherit;
     color: var(--muted);
-    margin-bottom: 16px;
+    cursor: pointer;
   }
   .weather-strip.loading { color: var(--muted); }
   .weather-strip .ws-icon { display: inline-flex; align-items: center; }
   .weather-strip .ws-temp { color: var(--text); font-weight: 700; }
   .weather-strip .ws-sep { opacity: 0.4; }
+  .strip-chevron {
+    margin-left: auto;
+    font-size: 1rem;
+    line-height: 1;
+    transition: transform 0.2s ease;
+    color: var(--accent);
+  }
+  .weather-strip.open .strip-chevron { transform: rotate(180deg); }
+  .hourly-wrap {
+    background: var(--card);
+    border: 1px solid var(--outline);
+    border-radius: 20px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
   .hourly-strip {
     display: flex;
     justify-content: space-between;
