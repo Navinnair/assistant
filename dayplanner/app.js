@@ -442,6 +442,17 @@ const TYPE_COLORS = {
   UBAHN: "#0065AE", SBAHN: "#00975F", TRAM: "#E2001A",
   BUS: "#00586A", REGIONAL_BUS: "#00586A", BAHN: "#5b6770",
 };
+// Deep link to Google Maps transit directions for the current direction.
+function mapsUrlFor(direction) {
+  const o = direction === "office" ? CONFIG.home : CONFIG.office;
+  const d = direction === "office" ? CONFIG.office : CONFIG.home;
+  return `https://www.google.com/maps/dir/?api=1&origin=${o.lat},${o.lon}` +
+    `&destination=${d.lat},${d.lon}&travelmode=transit`;
+}
+function openRoute() {
+  window.open(mapsUrlFor(selectedDirection), "_blank", "noopener");
+}
+
 // Crowding badge for a leg's occupancy; empty when unknown.
 const OCCUPANCY = { LOW: ["occ-low", "Quiet"], MEDIUM: ["occ-med", "Busy"], HIGH: ["occ-high", "Packed"] };
 function occupancyTag(level) {
@@ -532,8 +543,8 @@ function renderRoutes(elementId, summaries, count) {
       ? '<span class="delay-tag cancel">cancelled</span>'
       : delayM > 0 ? `<span class="delay-tag">+${delayM} late</span>` : "";
     return `
-      <div class="route" data-departure="${s.departure}" data-delay="${delayM}">
-        <div class="route-time"><span class="route-num"></span>${fmtTime(s.departure)} → ${fmtTime(s.arrival)} (${fmtDuration(s.durationMs)})${delayTag}<span class="route-rel"></span></div>
+      <div class="route" data-departure="${s.departure}" data-delay="${delayM}" onclick="openRoute()" onkeydown="if(event.key==='Enter')openRoute()" role="link" tabindex="0" title="Open in Google Maps">
+        <div class="route-time"><span class="route-num"></span>${fmtTime(s.departure)} → ${fmtTime(s.arrival)} (${fmtDuration(s.durationMs)})${delayTag}<span class="route-rel"></span><span class="route-ext">↗</span></div>
         ${alertHtml}
         ${walkHtml}
         ${legsHtml}
@@ -888,7 +899,20 @@ function saveCachedWeather(data) {
   } catch (e) {}
 }
 
+let isLoading = false;
 async function loadAll() {
+  if (isLoading) return;
+  isLoading = true;
+  document.getElementById("refreshBtn").classList.add("spinning");
+  try {
+    await loadAllInner();
+  } finally {
+    isLoading = false;
+    document.getElementById("refreshBtn").classList.remove("spinning");
+  }
+}
+
+async function loadAllInner() {
   document.getElementById("dateLine").textContent = new Date().toLocaleDateString("en-GB", {
     weekday: "long", year: "numeric", month: "long", day: "numeric"
   });
@@ -928,6 +952,31 @@ loadAll();
 
 // Auto-refresh every 5 minutes
 setInterval(loadAll, CONFIG.refreshMs);
+
+// --- Pull-to-refresh (mobile): drag down from the top to reload ---
+(function () {
+  const PULL_THRESHOLD = 70;
+  const ind = document.getElementById("pullIndicator");
+  let startY = null, armed = false;
+
+  window.addEventListener("touchstart", (e) => {
+    startY = window.scrollY === 0 ? e.touches[0].clientY : null;
+    armed = false;
+  }, { passive: true });
+
+  window.addEventListener("touchmove", (e) => {
+    if (startY == null || isLoading) return;
+    const dy = e.touches[0].clientY - startY;
+    armed = dy > PULL_THRESHOLD;
+    ind.classList.toggle("show", armed);
+  }, { passive: true });
+
+  window.addEventListener("touchend", () => {
+    if (armed) { ind.classList.remove("show"); loadAll(); }
+    startY = null;
+    armed = false;
+  });
+})();
 
 // --- PWA: register service worker + "new version" refresh toast ---
 function showUpdateToast(reg) {
