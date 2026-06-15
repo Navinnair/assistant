@@ -3,19 +3,22 @@
 
 const WAKING = { start: 8, end: 21 };
 
+const t = (k, p) => I18N.t(k, p);
+
+// [wx-key, icon-category]. Label text is looked up per language via t(key).
 const WEATHER_CODES = {
-  0: ["Clear sky", "sun"], 1: ["Mainly clear", "sun"], 2: ["Partly cloudy", "cloud-sun"],
-  3: ["Overcast", "cloud"], 45: ["Fog", "fog"], 48: ["Fog", "fog"],
-  51: ["Light drizzle", "rain"], 53: ["Drizzle", "rain"], 55: ["Dense drizzle", "rain"],
-  56: ["Freezing drizzle", "rain"], 57: ["Freezing drizzle", "rain"],
-  61: ["Light rain", "rain"], 63: ["Rain", "rain"], 65: ["Heavy rain", "rain"],
-  66: ["Freezing rain", "rain"], 67: ["Freezing rain", "rain"],
-  71: ["Light snow", "snow"], 73: ["Snow", "snow"], 75: ["Heavy snow", "snow"], 77: ["Snow grains", "snow"],
-  80: ["Rain showers", "rain"], 81: ["Rain showers", "rain"], 82: ["Violent showers", "storm"],
-  85: ["Snow showers", "snow"], 86: ["Snow showers", "snow"],
-  95: ["Thunderstorm", "storm"], 96: ["Thunderstorm + hail", "storm"], 99: ["Thunderstorm + hail", "storm"],
+  0: ["wx.clear", "sun"], 1: ["wx.mclear", "sun"], 2: ["wx.pcloudy", "cloud-sun"],
+  3: ["wx.overcast", "cloud"], 45: ["wx.fog", "fog"], 48: ["wx.fog", "fog"],
+  51: ["wx.drizzleL", "rain"], 53: ["wx.drizzle", "rain"], 55: ["wx.drizzleD", "rain"],
+  56: ["wx.fdrizzle", "rain"], 57: ["wx.fdrizzle", "rain"],
+  61: ["wx.rainL", "rain"], 63: ["wx.rain", "rain"], 65: ["wx.rainH", "rain"],
+  66: ["wx.frain", "rain"], 67: ["wx.frain", "rain"],
+  71: ["wx.snowL", "snow"], 73: ["wx.snow", "snow"], 75: ["wx.snowH", "snow"], 77: ["wx.grains", "snow"],
+  80: ["wx.showers", "rain"], 81: ["wx.showers", "rain"], 82: ["wx.vshowers", "storm"],
+  85: ["wx.sshowers", "snow"], 86: ["wx.sshowers", "snow"],
+  95: ["wx.storm", "storm"], 96: ["wx.hail", "storm"], 99: ["wx.hail", "storm"],
 };
-function weatherInfo(code) { return WEATHER_CODES[code] || ["Unknown", "cloud"]; }
+function weatherInfo(code) { return WEATHER_CODES[code] || ["wx.unknown", "cloud"]; }
 
 const WEATHER_ICONS = {
   sun: `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>`,
@@ -80,15 +83,16 @@ function sunnyHours(data, dayIdx) {
 
 // Outfit decision — same thresholds as the Office planner.
 function computeOutfit(minTemp, rainProb, wind) {
-  let wearKey, wearText, jacketKey, jacketText, notes = [];
-  if (minTemp < 2) { wearKey = "sweater"; wearText = "Thermal + sweater"; jacketKey = "coat"; jacketText = "Big winter coat"; notes.push("Scarf + gloves"); }
-  else if (minTemp < 9) { wearKey = "sweater"; wearText = "Warm sweater"; jacketKey = "coat"; jacketText = "Warm coat"; }
-  else if (minTemp < 15) { wearKey = "shirt"; wearText = "Long sleeve"; jacketKey = "coat"; jacketText = "Light jacket"; }
-  else if (minTemp < 21) { wearKey = "shirt"; wearText = "T-shirt / light top"; jacketKey = "sun"; jacketText = "No coat"; }
-  else { wearKey = "shirt"; wearText = "T-shirt"; jacketKey = "sun"; jacketText = "No jacket"; }
-  if (wind >= 30) notes.push("💨 Windy");
+  // wearTextKey/jacketTextKey are i18n keys resolved at render time.
+  let wearKey, wearTextKey, jacketKey, jacketTextKey, noteKeys = [];
+  if (minTemp < 2) { wearKey = "sweater"; wearTextKey = "fit.thermalS"; jacketKey = "coat"; jacketTextKey = "fit.bigCoat"; noteKeys.push("fit.scarf"); }
+  else if (minTemp < 9) { wearKey = "sweater"; wearTextKey = "fit.warmSweater"; jacketKey = "coat"; jacketTextKey = "fit.warmCoatS"; }
+  else if (minTemp < 15) { wearKey = "shirt"; wearTextKey = "fit.longSleeveS"; jacketKey = "coat"; jacketTextKey = "fit.lightJacket"; }
+  else if (minTemp < 21) { wearKey = "shirt"; wearTextKey = "fit.tshirtLightS"; jacketKey = "sun"; jacketTextKey = "fit.noCoatS"; }
+  else { wearKey = "shirt"; wearTextKey = "fit.tshirt"; jacketKey = "sun"; jacketTextKey = "fit.noJacketS"; }
+  if (wind >= 30) noteKeys.push("dp.windy");
   const umbrella = rainProb != null && rainProb >= 30;
-  return { wearKey, wearText, jacketKey, jacketText, umbrella, notes };
+  return { wearKey, wearTextKey, jacketKey, jacketTextKey, umbrella, noteKeys };
 }
 
 // --- theme ---
@@ -104,6 +108,7 @@ function toggleTheme() {
 const MOON = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
 const SUN = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>`;
 applyTheme(localStorage.getItem("theme") || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"));
+I18N.apply();
 
 // --- helpers ---
 function ymd(d) {
@@ -111,7 +116,7 @@ function ymd(d) {
 }
 function fmtDayDate(isoDate) {
   const d = new Date(isoDate + "T12:00:00");
-  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  return d.toLocaleDateString(I18N.dateLocale(), { weekday: "short", day: "numeric", month: "short" });
 }
 
 // Default the date inputs to today..+5.
@@ -142,7 +147,17 @@ async function geocode(name) {
       lat: r.latitude, lon: r.longitude,
       label: [r.name, r.admin1, r.country].filter(Boolean).join(", "),
       short: r.name,
+      cc: (r.country_code || "").toUpperCase(),
+      country: r.country,
     }));
+}
+
+// Home country from Settings (default Germany) — to flag border crossings.
+function homeCountry() {
+  try {
+    const s = JSON.parse(localStorage.getItem("planner_settings") || "null");
+    return (s && s.home && s.home.countryCode ? s.home.countryCode : "DE").toUpperCase();
+  } catch (e) { return "DE"; }
 }
 
 async function fetchTripWeather(lat, lon, start, end) {
@@ -165,16 +180,16 @@ async function planTrip(e) {
   document.getElementById("placeMatches").style.display = "none";
 
   if (!dest || !start || !end) return false;
-  if (end < start) { status("End date is before the start date."); return false; }
+  if (end < start) { status(t("tr.endBeforeStart")); return false; }
 
-  status("Finding place…");
+  status(t("tr.finding"));
   let places;
   try { places = await geocode(dest); }
   catch (err) {
-    tripError("Couldn't reach the location service.", () => document.getElementById("tripForm").requestSubmit());
+    tripError(t("tr.geoErr"), () => document.getElementById("tripForm").requestSubmit());
     return false;
   }
-  if (!places.length) { status(`No European place found for "${dest}".`); return false; }
+  if (!places.length) { status(t("tr.noPlace", { q: dest })); return false; }
 
   // If several matches, let the user pick; default to the first.
   if (places.length > 1) renderPlaceChips(places, start, end);
@@ -213,19 +228,19 @@ function tripError(msg, retryFn) {
   status("");
   const res = document.getElementById("tripResults");
   res.innerHTML = `<div class="trip-error">${msg}` +
-    (retryFn ? `<button class="retry-btn" id="tripRetry">Retry</button>` : "") + `</div>`;
+    (retryFn ? `<button class="retry-btn" id="tripRetry">${t("dp.retry")}</button>` : "") + `</div>`;
   if (retryFn) document.getElementById("tripRetry").onclick = retryFn;
 }
 
 let currentStart = "", currentEnd = "";
 async function runPlan(place, start, end) {
-  status(`Loading weather for ${place.short}…`);
+  status(t("tr.loadingFor", { place: place.short }));
   showTripSkeleton();
   let data;
   try { data = await fetchTripWeather(place.lat, place.lon, start, end); }
-  catch (err) { tripError("Couldn't load the forecast.", () => runPlan(place, start, end)); return; }
+  catch (err) { tripError(t("tr.forecastErr"), () => runPlan(place, start, end)); return; }
   if (!data.daily || !data.daily.time || !data.daily.time.length) {
-    tripError("No forecast for those dates (try within the next ~16 days).");
+    tripError(t("tr.noForecast"));
     return;
   }
   currentStart = start; currentEnd = end;
@@ -237,10 +252,12 @@ async function runPlan(place, start, end) {
 // Collapse the form into a compact bar so results get the space.
 function collapseSearch(place, days) {
   document.getElementById("tripForm").style.display = "none";
+  const intl = place.cc && place.cc !== homeCountry();
   const bar = document.getElementById("tripSummary");
   bar.innerHTML = `<span>🧳 ${place.short}</span>` +
+    (intl ? `<span class="ts-passport" title="${t("tr.passportShort")}">🛂</span>` : "") +
     `<span class="ts-dates">${fmtDayDate(days[0])} – ${fmtDayDate(days[days.length - 1])}</span>` +
-    `<span class="ts-change">✎ Change</span>`;
+    `<span class="ts-change">${t("tr.change")}</span>`;
   bar.style.display = "flex";
 }
 
@@ -253,11 +270,11 @@ function editSearch() {
 // clear days. Wear + Outerwear always shown. Grid sizes to the tile count.
 function outfitTiles(o, sunny) {
   const tiles = [
-    `<div class="day-tile"><div class="t-ic">${outfitIcon(o.wearKey)}</div><div class="t-label">Wear</div><div class="t-text">${o.wearText}</div></div>`,
-    `<div class="day-tile"><div class="t-ic">${outfitIcon(o.jacketKey)}</div><div class="t-label">Outerwear</div><div class="t-text">${o.jacketText}</div></div>`,
+    `<div class="day-tile"><div class="t-ic">${outfitIcon(o.wearKey)}</div><div class="t-label">${t("tr.wear")}</div><div class="t-text">${t(o.wearTextKey)}</div></div>`,
+    `<div class="day-tile"><div class="t-ic">${outfitIcon(o.jacketKey)}</div><div class="t-label">${t("tr.outerwear")}</div><div class="t-text">${t(o.jacketTextKey)}</div></div>`,
   ];
-  if (o.umbrella) tiles.push(`<div class="day-tile"><div class="t-ic">${outfitIcon("umbrella")}</div><div class="t-label">Umbrella</div><div class="t-text">Yes</div></div>`);
-  if (sunny) tiles.push(`<div class="day-tile"><div class="t-ic">${outfitIcon("glasses")}</div><div class="t-label">Sunglasses</div><div class="t-text">Yes</div></div>`);
+  if (o.umbrella) tiles.push(`<div class="day-tile"><div class="t-ic">${outfitIcon("umbrella")}</div><div class="t-label">${t("tr.umbrella")}</div><div class="t-text">${t("tr.yes")}</div></div>`);
+  if (sunny) tiles.push(`<div class="day-tile"><div class="t-ic">${outfitIcon("glasses")}</div><div class="t-label">${t("tr.sunglasses")}</div><div class="t-text">${t("tr.yes")}</div></div>`);
   return `<div class="day-outfit" style="grid-template-columns:repeat(${tiles.length},1fr)">${tiles.join("")}</div>`;
 }
 
@@ -284,12 +301,15 @@ function tripOverall(data) {
 
 function overallCard(place, days, ov) {
   const o = ov.outfit;
+  // Crossing a border (destination country differs from home) → passport/ID.
+  const intl = place.cc && place.cc !== homeCountry();
   return `
     <div class="overall-card">
-      <div class="overall-head">Pack for ${place.short} · ${fmtDayDate(days[0])} – ${fmtDayDate(days[days.length - 1])}</div>
-      <div class="overall-range">${Math.round(ov.minT)}° to ${Math.round(ov.maxT)}° · 🌧️ up to ${Math.round(ov.maxRain)}%</div>
+      <div class="overall-head">${t("tr.packFor", { place: place.short, from: fmtDayDate(days[0]), to: fmtDayDate(days[days.length - 1]) })}</div>
+      <div class="overall-range">${t("tr.upTo", { min: Math.round(ov.minT), max: Math.round(ov.maxT), rain: Math.round(ov.maxRain) })}</div>
       ${outfitTiles(o, ov.sunny)}
-      <div class="overall-note">Covers the coldest/wettest day of the trip${o.notes.length ? " · " + o.notes.join(" · ") : ""}</div>
+      ${intl ? `<div class="overall-passport">${t("tr.passport", { country: place.country || "" })}</div>` : ""}
+      <div class="overall-note">${t("tr.covers")}${o.noteKeys.length ? " · " + o.noteKeys.map((k) => t(k)).join(" · ") : ""}</div>
     </div>`;
 }
 
@@ -298,9 +318,10 @@ function renderTrip(place, data) {
   const cards = days.map((date, i) => {
     const code = data.daily.weathercode[i];
     if (code == null || data.daily.temperature_2m_max[i] == null) {
-      return `<div class="day-card nodata"><div class="day-date">${fmtDayDate(date)}</div><div>No forecast available</div></div>`;
+      return `<div class="day-card nodata"><div class="day-date">${fmtDayDate(date)}</div><div>${t("tr.noData")}</div></div>`;
     }
-    const [label, cat] = weatherInfo(code);
+    const [labelKey, cat] = weatherInfo(code);
+    const label = t(labelKey);
     const max = Math.round(data.daily.temperature_2m_max[i]);
     const min = Math.round(data.daily.temperature_2m_min[i]);
     const dayRain = data.daily.precipitation_probability_max[i];
@@ -323,7 +344,7 @@ function renderTrip(place, data) {
         </div>
         <div class="day-meta">🌧️ ${dayRain == null ? "–" : dayRain + "%"} · 💨 ${dayWind} km/h</div>
         ${outfitTiles(o, sunnyHours(data, i) >= SUNNY_HOURS)}
-        ${o.notes.length ? `<div class="day-note">${o.notes.join(" · ")}</div>` : ""}
+        ${o.noteKeys.length ? `<div class="day-note">${o.noteKeys.map((k) => t(k)).join(" · ")}</div>` : ""}
       </div>`;
   }).join("");
 

@@ -61,6 +61,7 @@
     cursor: pointer;
     text-align: left;
   }
+  .trip-summary .ts-passport { font-size: 1rem; }
   .trip-summary .ts-dates { color: var(--muted); font-weight: 500; }
   .trip-summary .ts-change { margin-left: auto; color: var(--accent); font-weight: 700; white-space: nowrap; }
   .field input:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
@@ -138,6 +139,20 @@
   :root[data-theme="light"] .overall-card .day-tile { background: rgba(255,255,255,0.55); }
   .overall-card .t-label { color: var(--on-primary-container); opacity: 0.7; }
   .overall-note { font-size: 0.75rem; opacity: 0.7; margin-top: 10px; }
+  .overall-passport {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: var(--md-shape-md);
+    background: rgba(0,0,0,0.22);
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--on-primary-container);
+  }
+  :root[data-theme="light"] .overall-passport { background: rgba(255,255,255,0.6); }
   .day-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
   @media (min-width: 600px) { .day-grid { grid-template-columns: 1fr 1fr; } }
 

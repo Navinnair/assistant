@@ -1,12 +1,12 @@
 // Build version — keep in sync with the SW cache (my-planner-vN). Shown in the
 // footer so it's easy to confirm you're on the latest code.
-const APP_VERSION = "v24";
+const APP_VERSION = "v26";
 
 // Defaults — the original hardcoded Munich setup. The Settings page can
 // override home/office/usual-times via localStorage["planner_settings"].
 const DEFAULT_PLACES = {
-  home:   { label: "Riesenfeldstraße 10, München", lat: 48.1769745, lon: 11.5652835 },
-  office: { label: "Lenbachplatz 3, München",      lat: 48.1411534, lon: 11.5681888 },
+  home:   { label: "Riesenfeldstraße 10, München", lat: 48.1769745, lon: 11.5652835, countryCode: "DE" },
+  office: { label: "Lenbachplatz 3, München",      lat: 48.1411534, lon: 11.5681888, countryCode: "DE" },
   officeArrival: { hour: 9, minute: 0 },
   homeReturn:    { hour: 18, minute: 0 },
 };
@@ -51,40 +51,43 @@ const OFFICE = CONFIG.office;
 
 const TRANSPORT_TYPES = "SCHIFF,RUFTAXI,BAHN,REGIONAL_BUS,UBAHN,TRAM,SBAHN,BUS";
 
-// WMO weather code -> [label, icon-category]
+const t = (k, p) => I18N.t(k, p);
+
+// WMO weather code -> [wx-key, icon-category]. Label resolved per language.
 const WEATHER_CODES = {
-  0: ["Clear sky", "sun"],
-  1: ["Mainly clear", "sun"],
-  2: ["Partly cloudy", "cloud-sun"],
-  3: ["Overcast", "cloud"],
-  45: ["Fog", "fog"],
-  48: ["Fog", "fog"],
-  51: ["Light drizzle", "rain"],
-  53: ["Drizzle", "rain"],
-  55: ["Dense drizzle", "rain"],
-  56: ["Freezing drizzle", "rain"],
-  57: ["Freezing drizzle", "rain"],
-  61: ["Light rain", "rain"],
-  63: ["Rain", "rain"],
-  65: ["Heavy rain", "rain"],
-  66: ["Freezing rain", "rain"],
-  67: ["Freezing rain", "rain"],
-  71: ["Light snow", "snow"],
-  73: ["Snow", "snow"],
-  75: ["Heavy snow", "snow"],
-  77: ["Snow grains", "snow"],
-  80: ["Rain showers", "rain"],
-  81: ["Rain showers", "rain"],
-  82: ["Violent showers", "storm"],
-  85: ["Snow showers", "snow"],
-  86: ["Snow showers", "snow"],
-  95: ["Thunderstorm", "storm"],
-  96: ["Thunderstorm + hail", "storm"],
-  99: ["Thunderstorm + hail", "storm"],
+  0: ["wx.clear", "sun"],
+  1: ["wx.mclear", "sun"],
+  2: ["wx.pcloudy", "cloud-sun"],
+  3: ["wx.overcast", "cloud"],
+  45: ["wx.fog", "fog"],
+  48: ["wx.fog", "fog"],
+  51: ["wx.drizzleL", "rain"],
+  53: ["wx.drizzle", "rain"],
+  55: ["wx.drizzleD", "rain"],
+  56: ["wx.fdrizzle", "rain"],
+  57: ["wx.fdrizzle", "rain"],
+  61: ["wx.rainL", "rain"],
+  63: ["wx.rain", "rain"],
+  65: ["wx.rainH", "rain"],
+  66: ["wx.frain", "rain"],
+  67: ["wx.frain", "rain"],
+  71: ["wx.snowL", "snow"],
+  73: ["wx.snow", "snow"],
+  75: ["wx.snowH", "snow"],
+  77: ["wx.grains", "snow"],
+  80: ["wx.showers", "rain"],
+  81: ["wx.showers", "rain"],
+  82: ["wx.vshowers", "storm"],
+  85: ["wx.sshowers", "snow"],
+  86: ["wx.sshowers", "snow"],
+  95: ["wx.storm", "storm"],
+  96: ["wx.hail", "storm"],
+  99: ["wx.hail", "storm"],
 };
 
+// Returns [wx-key, icon-category]. Caller resolves the key via t().
 function weatherInfo(code) {
-  return WEATHER_CODES[code] || ["Unknown", "cloud"];
+  return WEATHER_CODES[code] || ["wx.unknown", "cloud"];
 }
 
 // Inline SVG icon set (stroke="currentColor" so it follows theme)
@@ -160,11 +163,11 @@ function fmtTime(iso) {
   return new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 }
 
-// Minutes → "45 min" or "1h 5m" once it passes an hour.
+// Minutes → "45 min" or "1h 5m" once it passes an hour (units localized).
 function fmtMins(min) {
-  if (min < 60) return `${min} min`;
+  if (min < 60) return `${min} ${t("dp.uMin")}`;
   const h = Math.floor(min / 60), m = min % 60;
-  return m ? `${h}h ${m}m` : `${h}h`;
+  return m ? `${h}${t("dp.uH")} ${m}${t("dp.uM")}` : `${h}${t("dp.uH")}`;
 }
 
 function fmtDuration(ms) {
@@ -293,7 +296,8 @@ function daytimeMaxWind(data, dayIdx) {
 
 function renderWeather(data, dayIdx) {
   const i = dayIdx || 0;
-  const [label, category] = weatherInfo(data.daily.weathercode[i]);
+  const [labelKey, category] = weatherInfo(data.daily.weathercode[i]);
+  const label = t(labelKey);
   const max = Math.round(data.daily.temperature_2m_max[i]);
   const min = Math.round(data.daily.temperature_2m_min[i]);
   const rain = data.daily.precipitation_probability_max[i];
@@ -339,40 +343,40 @@ function renderOutfit(data, dayIdx) {
 
   if (minTemp < 2) {
     wearKey = "sweater";
-    wearText = "Thermal layers + warm sweater";
+    wearText = t("fit.thermal");
     jacketKey = "coat";
-    jacketText = "Big winter coat";
-    notes.push("Scarf + gloves recommended");
+    jacketText = t("fit.bigCoat");
+    notes.push(t("fit.scarf"));
   } else if (minTemp < 9) {
     wearKey = "sweater";
-    wearText = "Warm sweater";
+    wearText = t("fit.warmSweater");
     jacketKey = "coat";
-    jacketText = "Medium/warm coat";
+    jacketText = t("fit.warmCoat");
   } else if (minTemp < 15) {
     wearKey = "shirt";
-    wearText = "Long sleeve / light sweater";
+    wearText = t("fit.longSleeve");
     jacketKey = "coat";
-    jacketText = "Light jacket";
+    jacketText = t("fit.lightJacket");
   } else if (minTemp < 21) {
     wearKey = "shirt";
-    wearText = "T-shirt or light top";
+    wearText = t("fit.tshirtLight");
     jacketKey = "sun";
-    jacketText = "❌ No";
+    jacketText = t("fit.noCoat");
   } else {
     wearKey = "shirt";
-    wearText = "T-shirt";
+    wearText = t("fit.tshirt");
     jacketKey = "sun";
-    jacketText = "❌ No";
+    jacketText = t("fit.noCoat");
   }
 
   // Surface the feels-like gap when it's meaningfully colder/warmer than the
   // raw temperature — explains why the outfit might look "over/under-dressed".
   if (isFinite(realMin) && isFinite(minTemp) && Math.abs(minTemp - realMin) >= 2) {
-    notes.push(`🌡️ feels like ${Math.round(minTemp)}° (actual ${Math.round(realMin)}°)`);
+    notes.push(t("dp.feelsLike", { feels: Math.round(minTemp), actual: Math.round(realMin) }));
   }
 
   if (wind >= 30) {
-    notes.push("💨 Windy — windbreaker helps");
+    notes.push(t("dp.windy"));
   }
 
   const needsUmbrella = rainProb >= 30;
@@ -381,11 +385,11 @@ function renderOutfit(data, dayIdx) {
   // Tiles are conditional: umbrella only when rain's likely, sunglasses on
   // clear days. Wear + Outerwear are always shown.
   const sections = [
-    { icon: outfitIcon(wearKey), label: "Wear", text: wearText },
-    { icon: outfitIcon(jacketKey), label: "Outerwear", text: jacketText },
+    { icon: outfitIcon(wearKey), label: t("dp.wear"), text: wearText },
+    { icon: outfitIcon(jacketKey), label: t("dp.outerwear"), text: jacketText },
   ];
-  if (needsUmbrella) sections.push({ icon: outfitIcon("umbrella"), label: "Umbrella", text: "Yes" });
-  if (sunny) sections.push({ icon: outfitIcon("glasses"), label: "Sunglasses", text: "Yes" });
+  if (needsUmbrella) sections.push({ icon: outfitIcon("umbrella"), label: t("dp.umbrella"), text: t("dp.yes") });
+  if (sunny) sections.push({ icon: outfitIcon("glasses"), label: t("dp.sunglasses"), text: t("dp.yes") });
 
   const tiles = sections.map((s) => `
       <div class="outfit-section">
@@ -528,10 +532,10 @@ function openRoute() {
 }
 
 // Crowding badge for a leg's occupancy; empty when unknown.
-const OCCUPANCY = { LOW: ["occ-low", "Quiet"], MEDIUM: ["occ-med", "Busy"], HIGH: ["occ-high", "Packed"] };
+const OCCUPANCY = { LOW: ["occ-low", "dp.quiet"], MEDIUM: ["occ-med", "dp.busy"], HIGH: ["occ-high", "dp.packed"] };
 function occupancyTag(level) {
   const o = OCCUPANCY[level];
-  return o ? `<span class="occupancy ${o[0]}">● ${o[1]}</span>` : "";
+  return o ? `<span class="occupancy ${o[0]}">● ${t(o[1])}</span>` : "";
 }
 
 function lineColor(line, type) {
@@ -572,13 +576,13 @@ const SKELETON = {
 
 function showRoutesError() {
   document.getElementById("routesList").innerHTML =
-    '<div class="loading">Couldn\'t load routes.<button class="retry-btn" onclick="loadRoutes(selectedDay)">Retry</button></div>';
+    `<div class="loading">${t("dp.couldntRoutes")}<button class="retry-btn" onclick="loadRoutes(selectedDay)">${t("dp.retry")}</button></div>`;
   document.getElementById("showMoreBtn").style.display = "none";
 }
 
 function renderRoutes(elementId, summaries, count) {
   if (!summaries.length) {
-    document.getElementById(elementId).innerHTML = `<div class="loading">No departures found for this window.</div>`;
+    document.getElementById(elementId).innerHTML = `<div class="loading">${t("dp.noDepartures")}</div>`;
     const empty = document.getElementById("routesEmpty");
     if (empty) empty.style.display = "none";
     const more = document.getElementById("showMoreBtn");
@@ -590,7 +594,7 @@ function renderRoutes(elementId, summaries, count) {
     const legsHtml = s.legs.length
       ? `<div class="route-legs">` + s.legs.map(l => {
           const meta = [
-            l.realTime ? '<span class="route-livetag">● live</span>' : "",
+            l.realTime ? `<span class="route-livetag">● ${t("dp.live")}</span>` : "",
             occupancyTag(l.occupancy),
           ].filter(Boolean).join(" ");
           return `
@@ -602,9 +606,9 @@ function renderRoutes(elementId, summaries, count) {
             <div class="leg-stop"><i class="dot end"></i><span class="route-station">${fmtTime(l.alightTime)} ${l.alight}</span></div>
             ${l.warnings.map(w => `<div class="route-warning">⚠️ ${w}</div>`).join("")}`;
         }).join("") + `</div>`
-      : `<div class="route-leg">Walk only</div>`;
+      : `<div class="route-leg">${t("dp.noWalk")}</div>`;
     const walkHtml = s.walk
-      ? `<div class="route-walk">🚶 ${s.walk.minutes} min walk to ${s.walk.dest}</div>`
+      ? `<div class="route-walk">🚶 ${t("dp.walkTo", { min: s.walk.minutes, dest: s.walk.dest })}</div>`
       : "";
     // Route-level disruption flag: any leg carrying a warning/info message.
     const allWarnings = s.legs.flatMap(l => l.warnings);
@@ -614,18 +618,18 @@ function renderRoutes(elementId, summaries, count) {
     const delayM = s.legs[0] ? s.legs[0].delayMin : 0;
     const cancelled = routeCancelled(s);
     const delayTag = cancelled
-      ? '<span class="delay-tag cancel">cancelled</span>'
-      : delayM > 0 ? `<span class="delay-tag">+${delayM} late</span>` : "";
+      ? `<span class="delay-tag cancel">${t("dp.cancelled")}</span>`
+      : delayM > 0 ? `<span class="delay-tag">${t("dp.minLate", { n: delayM })}</span>` : "";
     return `
-      <div class="route" data-departure="${s.departure}" data-delay="${delayM}" onclick="selectRoute('${s.departure}')" onkeydown="if(event.key==='Enter')selectRoute('${s.departure}')" role="button" tabindex="0" title="Pick this departure for Time to Go">
+      <div class="route" data-departure="${s.departure}" data-delay="${delayM}" onclick="selectRoute('${s.departure}')" onkeydown="if(event.key==='Enter')selectRoute('${s.departure}')" role="button" tabindex="0" title="${t("dp.catchThis")}">
         <div class="route-time"><span class="route-num"></span>${fmtTime(s.departure)} → ${fmtTime(s.arrival)} (${fmtDuration(s.durationMs)})${delayTag}<span class="route-rel"></span></div>
         ${alertHtml}
         ${walkHtml}
         ${legsHtml}
         <div class="route-actions">
-          <button type="button" class="route-map" title="Open in Google Maps" aria-label="Open in Google Maps" onclick="event.stopPropagation();openRoute()">
+          <button type="button" class="route-map" title="${t("dp.openMaps")}" aria-label="${t("dp.openMaps")}" onclick="event.stopPropagation();openRoute()">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-            Open in Maps
+            ${t("dp.openMaps")}
           </button>
         </div>
       </div>`;
@@ -674,8 +678,8 @@ function refreshRouteLive() {
       }
       row.style.display = "";
       if (rel) {
-        if (diff === 0) { rel.textContent = " · now"; rel.className = "route-rel " + leaveTier(0); }
-        else { rel.textContent = ` · in ${fmtMins(diff)}`; rel.className = "route-rel " + leaveTier(diff); }
+        if (diff === 0) { rel.textContent = " · " + t("dp.now"); rel.className = "route-rel " + leaveTier(0); }
+        else { rel.textContent = ` · ${fmtMins(diff)}`; rel.className = "route-rel " + leaveTier(diff); }
       }
       const isChosen = !chosenMarked && dep === chosenDep;
       if (isChosen) chosenMarked = true;
@@ -767,13 +771,13 @@ async function toggleReminder() {
   if (!summaries || !summaries.length) return;
   const chosen = chosenSummary(summaries, new Date());
   const leaveTs = effDepartureMs(chosen);
-  if (leaveTs <= Date.now()) { alert("That departure's leave time has already passed."); return; }
+  if (leaveTs <= Date.now()) { alert(t("dp.permTrip")); return; }
   let perm = Notification.permission;
   if (perm === "default") perm = await Notification.requestPermission();
-  if (perm !== "granted") { alert("Allow notifications for this site to get a leave reminder."); return; }
+  if (perm !== "granted") { alert(t("dp.permAsk")); return; }
   const line = chosen.legs[0] ? chosen.legs[0].line : "walk";
   const board = fmtTime(new Date(effBoardMs(chosen)).toISOString());
-  const label = `Leave ${selectedDirection === "office" ? "home" : "office"} now — ${line} at ${board}`;
+  const label = t("dp.leaveBody", { origin: t(selectedDirection === "office" ? "dp.home" : "dp.office"), line, time: board });
   reminder = { dir: selectedDirection, departure: chosen.departure, leaveTs, label, line, lastDelay: chosen.legs[0] ? chosen.legs[0].delayMin : 0 };
   localStorage.setItem("leave_reminder", JSON.stringify(reminder));
   await scheduleReminder(reminder);
@@ -788,7 +792,7 @@ async function scheduleReminder(r) {
   if ("serviceWorker" in navigator && "showTrigger" in Notification.prototype && "TimestampTrigger" in window) {
     try {
       const reg = await navigator.serviceWorker.ready;
-      await reg.showNotification("Time to leave 🚇", {
+      await reg.showNotification(t("dp.leaveTitle"), {
         body: r.label, tag: "leave-reminder", icon: "icon-192.png", badge: "icon-192.png",
         requireInteraction: true, showTrigger: new TimestampTrigger(r.leaveTs),
       });
@@ -814,7 +818,7 @@ async function notify(title, body, tag) {
     try { new Notification(title, { body, icon: "icon-192.png", tag }); } catch (_) {}
   }
 }
-function fireNow(r) { notify("Time to leave 🚇", r.label, "leave-reminder"); }
+function fireNow(r) { notify(t("dp.leaveTitle"), r.label, "leave-reminder"); }
 
 // Point an armed reminder at a different departure (e.g. after a cancellation).
 function repointReminder(s) {
@@ -824,7 +828,7 @@ function repointReminder(s) {
   reminder = {
     dir: selectedDirection, departure: s.departure, leaveTs: effDepartureMs(s),
     lastDelay: s.legs[0] ? s.legs[0].delayMin : 0, line,
-    label: `Leave ${selectedDirection === "office" ? "home" : "office"} now — ${line} at ${fmtTime(new Date(effBoardMs(s)).toISOString())}`,
+    label: t("dp.leaveBody", { origin: t(selectedDirection === "office" ? "dp.home" : "dp.office"), line, time: fmtTime(new Date(effBoardMs(s)).toISOString()) }),
   };
   localStorage.setItem("leave_reminder", JSON.stringify(reminder));
   scheduleReminder(reminder);
@@ -842,12 +846,12 @@ function checkDisruption() {
   if (!s || routeCancelled(s)) {
     const next = pickChosen(summaries, now);
     if (next && !routeCancelled(next) && next.departure !== reminder.departure) {
-      const oldLine = reminder.line || "Your train";
+      const oldLine = reminder.line || t("dp.yourTrain");
       const nextLine = next.legs[0] ? next.legs[0].line : "next";
       const board = fmtTime(new Date(effBoardMs(next)).toISOString());
       const leave = fmtTime(new Date(effDepartureMs(next)).toISOString());
       repointReminder(next);
-      notify("Train cancelled ⚠️", `${oldLine} cancelled — now ${nextLine} at ${board}, leave ${leave}`, "leave-reminder");
+      notify(t("dp.cancelTitle"), t("dp.cancelBody", { old: oldLine, line: nextLine, board, leave }), "leave-reminder");
     }
     return;
   }
@@ -862,7 +866,7 @@ function checkDisruption() {
     localStorage.setItem("leave_reminder", JSON.stringify(reminder));
     scheduleReminder(reminder);
     if (delay >= CONFIG.disruptionDelayMin && delay > wasDelay) {
-      notify("Running late ⏱️", `${reminder.line} ${delay} min late — leave at ${fmtTime(new Date(newLeave).toISOString())} instead`, "leave-reminder");
+      notify(t("dp.lateTitle"), t("dp.lateBody", { line: reminder.line, n: delay, time: fmtTime(new Date(newLeave).toISOString()) }), "leave-reminder");
     }
   }
 }
@@ -878,20 +882,21 @@ function setToggle(id, on) {
 function shortPlace(name) {
   return (name || "").split(",")[0].trim();
 }
+function dayLabel(dayIdx) { return t(dayIdx === 0 ? "dp.today" : "dp.tomorrow"); }
 function routesTitleFor(direction, dayIdx) {
-  const label = dayIdx === 0 ? "Today" : "Tomorrow";
+  const day = dayLabel(dayIdx);
   return direction === "home"
-    ? `To Home (${shortPlace(CONFIG.home.name)}) — ${label}`
-    : `To Office (${shortPlace(CONFIG.office.name)}) — ${label}`;
+    ? t("dp.toHome", { place: shortPlace(CONFIG.home.name), day })
+    : t("dp.toOffice", { place: shortPlace(CONFIG.office.name), day });
 }
 
 // Update the compact day stepper: day name, real date, and arrow bounds.
 function updateDayStepper(dayIdx) {
   const d = new Date();
   d.setDate(d.getDate() + dayIdx);
-  document.getElementById("dayName").textContent = dayIdx === 0 ? "Today" : "Tomorrow";
+  document.getElementById("dayName").textContent = dayLabel(dayIdx);
   document.getElementById("dayDate").textContent =
-    d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+    d.toLocaleDateString(I18N.dateLocale(), { weekday: "short", day: "numeric", month: "short" });
   document.getElementById("dayPrev").disabled = dayIdx === 0;
   document.getElementById("dayNext").disabled = dayIdx === 1;
 }
@@ -905,8 +910,7 @@ function stepDay(delta) {
 function selectDay(dayIdx) {
   selectedDay = dayIdx;
   updateDayStepper(dayIdx);
-  const label = dayIdx === 0 ? "Today" : "Tomorrow";
-  document.getElementById("outfitTitle").textContent = `Outfit for ${label}`;
+  document.getElementById("outfitTitle").textContent = t("dp.outfitFor", { day: dayLabel(dayIdx) });
   document.getElementById("routesTitle").textContent = routesTitleFor(selectedDirection, dayIdx);
 
   if (weatherData) {
@@ -959,9 +963,9 @@ function renderTomorrowPlan(summaries) {
   leaveActive = false;
   updateLeaveBar();
 
-  const origin = selectedDirection === "office" ? "home" : "office";
-  const dest = selectedDirection === "office" ? "To Office" : "To Home";
-  document.getElementById("leaveByTitle").textContent = `Tomorrow — ${dest}`;
+  const origin = t(selectedDirection === "office" ? "dp.home" : "dp.office");
+  const dest = t(selectedDirection === "office" ? "dp.toWork" : "dp.goingHome");
+  document.getElementById("leaveByTitle").textContent = `${t("dp.tomorrow")} — ${dest}`;
 
   const s = summaries[0];
   const leaveTime = new Date(s.departure);
@@ -972,17 +976,17 @@ function renderTomorrowPlan(summaries) {
   el.innerHTML = `
     <div class="leave-grid">
       <div class="leave-col">
-        <div class="leave-label">Leave ${origin}</div>
+        <div class="leave-label">${t("dp.leaveAt", { origin })}</div>
         <div class="leave-clock">${fmtTime(leaveTime.toISOString())}</div>
-        <div class="leave-plan">around this time</div>
+        <div class="leave-plan">${t("dp.aroundTime")}</div>
       </div>
       <div class="leave-col">
-        <div class="leave-label">First train (${line})</div>
+        <div class="leave-label">${t("dp.firstTrain", { line })}</div>
         <div class="leave-clock">${fmtTime(board.toISOString())}</div>
-        <div class="leave-plan">planning ahead</div>
+        <div class="leave-plan">${t("dp.planningAhead")}</div>
       </div>
     </div>
-    <div class="leave-sub">${s.walk ? `${s.walk.minutes} min walk to ${s.walk.dest}` : "no walk needed"} · tomorrow</div>
+    <div class="leave-sub">${s.walk ? t("dp.walkTo", { min: s.walk.minutes, dest: s.walk.dest }) : t("dp.noWalk")} · ${t("dp.tomorrow")}</div>
   `;
   flashIn(el);
 }
@@ -1013,9 +1017,9 @@ function updateLeaveBy() {
   // If a reminder's armed, react to cancellations/delays before we render.
   checkDisruption();
 
-  const origin = selectedDirection === "office" ? "home" : "office";
+  const origin = t(selectedDirection === "office" ? "dp.home" : "dp.office");
   document.getElementById("leaveByTitle").textContent =
-    selectedDirection === "office" ? "Time to Go — To Office" : "Time to Go — To Home";
+    `${t("dp.timeToGo")} — ${t(selectedDirection === "office" ? "dp.toWork" : "dp.goingHome")}`;
 
   const chosen = chosenSummary(summaries, now);
 
@@ -1028,18 +1032,18 @@ function updateLeaveBy() {
   const departDiff = Math.round((departTime - now) / 60000);
 
   const lineLabel = chosen.legs[0] ? chosen.legs[0].line : "walk";
-  let depLabel = `Departure (${lineLabel})`;
-  if (chosen.legs[0] && chosen.legs[0].cancelled) depLabel += " ✖ cancelled";
-  else if (delayMin > 0) depLabel += ` · <span class="delay-tag">+${delayMin} late</span>`;
+  let depLabel = t("dp.departure", { line: lineLabel });
+  if (chosen.legs[0] && chosen.legs[0].cancelled) depLabel += ` ✖ ${t("dp.cancelled")}`;
+  else if (delayMin > 0) depLabel += ` · <span class="delay-tag">${t("dp.minLate", { n: delayMin })}</span>`;
 
   function countdownText(diffMin) {
-    if (diffMin <= 0) return ["Now!", leaveTier(diffMin)];
+    if (diffMin <= 0) return [t("dp.now"), leaveTier(diffMin)];
     return [fmtMins(diffMin), leaveTier(diffMin)];
   }
 
   function leaveCountdownText(diffMin) {
-    if (diffMin <= 0) return ["Leave now!", leaveTier(diffMin)];
-    return [`Leave in ${fmtMins(diffMin)}`, leaveTier(diffMin)];
+    if (diffMin <= 0) return [t("dp.leaveNow"), leaveTier(diffMin)];
+    return [t("dp.leaveIn", { t: fmtMins(diffMin) }), leaveTier(diffMin)];
   }
 
   const [leaveText, leaveLevel] = leaveCountdownText(leaveDiff);
@@ -1050,7 +1054,7 @@ function updateLeaveBy() {
   el.innerHTML = `
     <div class="leave-grid">
       <div class="leave-col">
-        <div class="leave-label">Leave ${origin}</div>
+        <div class="leave-label">${t("dp.leaveAt", { origin })}</div>
         <div class="leave-clock">${fmtTime(leaveTime.toISOString())}</div>
         <div class="leave-countdown highlight ${leaveLevel}">${leaveText}</div>
       </div>
@@ -1060,10 +1064,10 @@ function updateLeaveBy() {
         <div class="leave-countdown ${departLevel}">${departText}</div>
       </div>
     </div>
-    <div class="leave-sub">${chosen.walk ? `${chosen.walk.minutes} min walk to ${chosen.walk.dest}` : "no walk needed"}${userPick && userPick.dir === selectedDirection ? " · your pick" : ""}</div>
+    <div class="leave-sub">${chosen.walk ? t("dp.walkTo", { min: chosen.walk.minutes, dest: chosen.walk.dest }) : t("dp.noWalk")}${userPick && userPick.dir === selectedDirection ? ` · ${t("dp.yourPick")}` : ""}</div>
     <div class="leave-controls">
-      ${canNotify ? `<button class="leave-btn ${reminderArmed ? "on" : ""}" onclick="toggleReminder()">${reminderArmed ? "🔔 Reminder on" : "🔕 Remind me"}</button>` : ""}
-      ${userPick && userPick.dir === selectedDirection ? `<button class="leave-btn ghost" onclick="resetChosen()">↺ Default</button>` : ""}
+      ${canNotify ? `<button class="leave-btn ${reminderArmed ? "on" : ""}" onclick="toggleReminder()">${reminderArmed ? t("dp.reminderOn") : t("dp.remindMe")}</button>` : ""}
+      ${userPick && userPick.dir === selectedDirection ? `<button class="leave-btn ghost" onclick="resetChosen()">${t("dp.default")}</button>` : ""}
     </div>
   `;
   flashIn(el);
@@ -1073,8 +1077,8 @@ function updateLeaveBy() {
   const banner = document.getElementById("disruptionBanner");
   const warns = chosen.legs.flatMap((l) => l.warnings);
   let bMsg = "", bLevel = "warn";
-  if (routeCancelled(chosen)) { bMsg = `⚠ ${lineLabel} cancelled — check alternatives below`; bLevel = "bad"; }
-  else if (delayMin >= CONFIG.disruptionDelayMin) { bMsg = `⚠ ${lineLabel} running ${delayMin} min late`; bLevel = "warn"; }
+  if (routeCancelled(chosen)) { bMsg = `⚠ ${lineLabel} ${t("dp.cancelled")}`; bLevel = "bad"; }
+  else if (delayMin >= CONFIG.disruptionDelayMin) { bMsg = `⚠ ${lineLabel} ${t("dp.minLate", { n: delayMin })}`; bLevel = "warn"; }
   else if (warns.length) { bMsg = `⚠ ${warns[0]}`; bLevel = "warn"; }
   if (bMsg) {
     banner.textContent = bMsg;
@@ -1087,7 +1091,7 @@ function updateLeaveBy() {
   // Feed the slim sticky bar (shown when this card is scrolled out of view).
   const dirIcon = selectedDirection === "office" ? "🏢" : "🏠";
   leaveActive = true;
-  leaveBarHtml = `<span>${dirIcon}</span><span>Leave ${fmtTime(leaveTime.toISOString())}</span>` +
+  leaveBarHtml = `<span>${dirIcon}</span><span>${t("dp.leaveAt", { origin: "" }).trim()} ${fmtTime(leaveTime.toISOString())}</span>` +
     `<span class="lb-count ${leaveLevel}">· ${leaveText}</span>` +
     `<span class="lb-sub">${lineLabel} ${fmtTime(departTime.toISOString())}</span>`;
   updateLeaveBar();
@@ -1134,7 +1138,7 @@ function renderStaleNote() {
   const el = document.getElementById("routesStale");
   const stale = !liveLoaded[selectedDirection] && routeCache[selectedDirection] && routeCacheSavedAt;
   if (stale) {
-    el.textContent = `⚠ Offline — showing routes from ${fmtTime(new Date(routeCacheSavedAt).toISOString())}`;
+    el.textContent = t("dp.offlineFrom", { time: fmtTime(new Date(routeCacheSavedAt).toISOString()) });
     el.style.display = "";
   } else {
     el.style.display = "none";
@@ -1232,18 +1236,9 @@ async function loadHolidays(year) {
   }
 }
 
-const WEEKEND_QUIPS = [
-  "🛋️ No office today, bro. Touch some grass.",
-  "🛌 Weekend mode on. Office can wait.",
-  "😎 It's the weekend — boss can't find you.",
-  "🍻 No commute. Trains run, you don't have to.",
-  "🦥 Zero meetings. Maximum couch.",
-];
-const HOLIDAY_QUIPS = [
-  (n) => `🎉 ${n}! Free day — boss said no.`,
-  (n) => `🥳 ${n} — no office, go enjoy.`,
-  (n) => `🎊 ${n}. Office closed, vibes open.`,
-];
+// Quip i18n keys; resolved (with the holiday name) when a day-off is shown.
+const WEEKEND_QUIPS = ["dp.we1", "dp.we2", "dp.we3", "dp.we4", "dp.we5"];
+const HOLIDAY_QUIPS = ["dp.ho1", "dp.ho2", "dp.ho3"];
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 // Returns null on a working day, else a (funny) reason this day is off.
@@ -1263,10 +1258,10 @@ function refreshDayOff() {
   const note = document.getElementById("dayOffNote");
   const info = dayOffInfo(selectedDay);
   if (!info) { note.style.display = "none"; dayOffMsg = ""; return; }
-  if (!dayOffMsg) dayOffMsg = info.holiday ? pick(HOLIDAY_QUIPS)(info.name) : pick(WEEKEND_QUIPS);
+  if (!dayOffMsg) dayOffMsg = info.holiday ? t(pick(HOLIDAY_QUIPS), { n: info.name }) : t(pick(WEEKEND_QUIPS));
   note.innerHTML = `<div>${dayOffMsg}</div>` +
     `<button class="dayoff-toggle" onclick="toggleLeaveOnDayOff()">` +
-    `${showLeaveOnDayOff ? "Hide travel times" : "🚆 Heading out? Show travel times"}</button>`;
+    `${showLeaveOnDayOff ? t("dp.hideTimes") : t("dp.headingOut")}</button>`;
   note.style.display = "block";
 }
 
@@ -1282,7 +1277,7 @@ function renderUpdated() {
   const el = document.getElementById("updated");
   if (!lastUpdatedAt) { el.textContent = ""; return; }
   const mins = Math.floor((Date.now() - lastUpdatedAt) / 60000);
-  const when = mins < 1 ? "Updated just now" : `Updated ${fmtMins(mins)} ago`;
+  const when = mins < 1 ? t("dp.updatedNow") : t("dp.updatedAgo", { t: fmtMins(mins) });
   el.textContent = `${when} · ${APP_VERSION}`;
   el.classList.toggle("stale", mins >= 6);
 }
@@ -1376,7 +1371,7 @@ async function loadAll() {
 }
 
 async function loadAllInner() {
-  document.getElementById("dateLine").textContent = new Date().toLocaleDateString("en-GB", {
+  document.getElementById("dateLine").textContent = new Date().toLocaleDateString(I18N.dateLocale(), {
     weekday: "long", year: "numeric", month: "long", day: "numeric"
   });
 
@@ -1405,7 +1400,7 @@ async function loadAllInner() {
   } catch (e) {
     if (!cached) {
       document.getElementById("weather").innerHTML =
-        '<div class="loading">Couldn\'t load weather.<button class="retry-btn" onclick="loadAll()">Retry</button></div>';
+        `<div class="loading">${t("tr.forecastErr")}<button class="retry-btn" onclick="loadAll()">${t("dp.retry")}</button></div>`;
       document.getElementById("outfit").innerHTML = `<div class="loading">—</div>`;
     }
   }
@@ -1413,6 +1408,9 @@ async function loadAllInner() {
   await loadRoutes(selectedDay);
 }
 
+I18N.apply(); // fill [data-i18n*] static markup + set <html dir/lang>
+document.getElementById("outfitTitle").textContent = t("dp.outfitFor", { day: dayLabel(selectedDay) });
+document.getElementById("leaveByTitle").textContent = t("dp.timeToGo");
 setToggle("btnDirHome", selectedDirection === "home");
 setToggle("btnDirOffice", selectedDirection === "office");
 updateDayStepper(selectedDay);

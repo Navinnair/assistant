@@ -13,9 +13,10 @@
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Noto+Sans+Malayalam:wght@400;500;700&family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../tokens.css">
-<script>document.documentElement.setAttribute("data-theme", localStorage.getItem("theme") || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"));</script>
+<script src="../i18n.js"></script>
+<script>document.documentElement.setAttribute("data-theme", localStorage.getItem("theme") || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")); I18N.applyDir();</script>
 <style>
   * { box-sizing: border-box; }
   body {
@@ -65,15 +66,15 @@
 <body>
   <header class="header-row">
     <h1>🏋️ Gym</h1>
-    <a class="icon-btn" href="../" title="All apps" aria-label="Back to home page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></a>
+    <a class="icon-btn" href="../" title="All apps" aria-label="Back to home page" data-i18n-aria="a11y.home"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></a>
   </header>
 
   <div class="stage">
-    <span class="badge">🚧 Under development</span>
+    <span class="badge" data-i18n="badge.dev">🚧 Under development</span>
     <img class="pic" src="underdevelopment.webp" alt="Bundled up, ready for the cold gym" loading="lazy">
-    <h2 class="title">Gym is warming up…</h2>
-    <p class="sub">Our dev showed up dressed for the weather. Check back soon. 💪🥶</p>
+    <h2 class="title" data-i18n="gym.title">Gym is warming up…</h2>
+    <p class="sub" data-i18n="gym.sub">Our dev showed up dressed for the weather. Check back soon. 💪🥶</p>
   </div>
-<script>if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("../sw.js"));</script>
+<script>I18N.apply(); if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("../sw.js"));</script>
 </body>
 </html>

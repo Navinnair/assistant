@@ -1,8 +1,8 @@
 // --- Settings: home/office addresses + usual times, saved to localStorage ---
 // Mirrors the dayplanner defaults; the planner reads localStorage["planner_settings"].
 const DEFAULTS = {
-  home:   { label: "Riesenfeldstraße 10, München", lat: 48.1769745, lon: 11.5652835 },
-  office: { label: "Lenbachplatz 3, München",      lat: 48.1411534, lon: 11.5681888 },
+  home:   { label: "Riesenfeldstraße 10, München", lat: 48.1769745, lon: 11.5652835, countryCode: "DE" },
+  office: { label: "Lenbachplatz 3, München",      lat: 48.1411534, lon: 11.5681888, countryCode: "DE" },
   officeArrival: { hour: 9, minute: 0 },
   homeReturn:    { hour: 18, minute: 0 },
 };
@@ -39,7 +39,7 @@ async function geocodeAddress(q) {
     const p = f.properties || {}, c = f.geometry.coordinates;
     const street = [p.housenumber, p.street].filter(Boolean).join(" ");
     const label = [p.name, street, p.postcode, p.city, p.country].filter(Boolean).join(", ");
-    return { lat: c[1], lon: c[0], label };
+    return { lat: c[1], lon: c[0], label, countryCode: (p.countrycode || "").toUpperCase() };
   });
 }
 async function reverseGeocode(lat, lon) {
@@ -51,14 +51,16 @@ async function reverseGeocode(lat, lon) {
   const street = [p.housenumber, p.street].filter(Boolean).join(" ");
   const label = [p.name, street, p.postcode, p.city, p.country].filter(Boolean).join(", ") ||
     `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-  return { lat, lon, label };
+  return { lat, lon, label, countryCode: (p.countrycode || "").toUpperCase() };
 }
+
+const t = (k, p) => I18N.t(k, p);
 
 function renderPicked(which) {
   const el = document.getElementById(which + "Picked");
   const p = picked[which];
   if (p) { el.className = "picked"; el.textContent = `📍 ${p.label}`; }
-  else { el.className = "picked empty"; el.textContent = "No address picked yet."; }
+  else { el.className = "picked empty"; el.textContent = t("set.noPick"); }
 }
 
 function renderMatches(which, results) {
@@ -90,37 +92,37 @@ function wireSearch(which) {
     timer = setTimeout(async () => {
       try {
         const results = await geocodeAddress(q);
-        if (!results.length) { setStatus(`No match for "${q}".`, "bad"); return; }
+        if (!results.length) { setStatus(t("set.noMatch", { q }), "bad"); return; }
         setStatus("");
         renderMatches(which, results);
-      } catch (e) { setStatus("Couldn't reach the address service.", "bad"); }
+      } catch (e) { setStatus(t("set.geoErr"), "bad"); }
     }, 400);
   });
 }
 
 function wireGps(which) {
   document.getElementById(which + "Gps").onclick = () => {
-    if (!navigator.geolocation) { setStatus("Location not available on this device.", "bad"); return; }
-    setStatus("Getting your location…");
+    if (!navigator.geolocation) { setStatus(t("set.noGeo"), "bad"); return; }
+    setStatus(t("set.locating"));
     navigator.geolocation.getCurrentPosition(async (pos) => {
       try {
         picked[which] = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
         renderPicked(which);
-        setStatus("Location set — check it's right.", "ok");
-      } catch (e) { setStatus("Couldn't resolve your location.", "bad"); }
-    }, () => setStatus("Location permission denied.", "bad"), { enableHighAccuracy: true, timeout: 10000 });
+        setStatus(t("set.locSet"), "ok");
+      } catch (e) { setStatus(t("set.locErr"), "bad"); }
+    }, () => setStatus(t("set.locDenied"), "bad"), { enableHighAccuracy: true, timeout: 10000 });
   };
 }
 
 // --- Validate: ask MVG for a route between the two picks. ---
 async function testRoute() {
-  if (!picked.home || !picked.office) { setStatus("Pick both home and office first.", "bad"); return; }
+  if (!picked.home || !picked.office) { setStatus(t("set.pickBothTest"), "bad"); return; }
   const res = document.getElementById("testResult");
-  res.textContent = "Checking transit between them…";
+  res.textContent = t("set.testing");
   // Cheap sanity guards before hitting the network.
   const km = haversineKm(picked.home, picked.office);
-  if (km < 0.1) { res.innerHTML = `⚠️ Home and office are basically the same spot.`; return; }
-  if (km > 200) { res.innerHTML = `⚠️ They're ${Math.round(km)} km apart — sure both are right?`; }
+  if (km < 0.1) { res.textContent = t("set.testSame"); return; }
+  if (km > 200) { res.textContent = t("set.testFar", { km: Math.round(km) }); }
   try {
     const url = `https://www.mvg.de/api/bgw-pt/v3/routes?originLatitude=${picked.home.lat}&originLongitude=${picked.home.lon}` +
       `&destinationLatitude=${picked.office.lat}&destinationLongitude=${picked.office.lon}` +
@@ -128,12 +130,12 @@ async function testRoute() {
       `&transportTypes=SCHIFF,RUFTAXI,BAHN,REGIONAL_BUS,UBAHN,TRAM,SBAHN,BUS`;
     const routes = await fetch(url).then((r) => r.json());
     if (Array.isArray(routes) && routes.length) {
-      res.innerHTML = `✅ Found transit routes between them — looks good.`;
+      res.textContent = t("set.testOk");
     } else {
-      res.innerHTML = `⚠️ No transit found near these points. The planner may not work — double-check the addresses.`;
+      res.textContent = t("set.testNone");
     }
   } catch (e) {
-    res.innerHTML = `⚠️ Couldn't reach the transit service to check (you may be offline).`;
+    res.textContent = t("set.testErr");
   }
 }
 
@@ -154,17 +156,17 @@ function readTimes() {
 }
 
 function save() {
-  if (!picked.home || !picked.office) { setStatus("Pick both home and office before saving.", "bad"); return; }
+  if (!picked.home || !picked.office) { setStatus(t("set.pickBoth"), "bad"); return; }
   const times = readTimes();
   const settings = { home: picked.home, office: picked.office, ...times };
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-  setStatus("Saved ✓ — reopen the Office planner to use it.", "ok");
+  setStatus(t("set.savedOk"), "ok");
 }
 
 function resetToDefaults() {
   localStorage.removeItem(SETTINGS_KEY);
   load();
-  setStatus("Reset to the default addresses.", "ok");
+  setStatus(t("set.resetOk"), "ok");
   document.getElementById("testResult").textContent = "";
 }
 
@@ -186,8 +188,24 @@ function load() {
   document.getElementById("officeMatches").innerHTML = "";
 }
 
+// --- Language: changing it re-renders all static text live + flips RTL. ---
+function wireLang() {
+  const sel = document.getElementById("langSelect");
+  sel.value = I18N.getLang();
+  sel.onchange = () => {
+    I18N.setLang(sel.value);
+    I18N.apply();              // re-fill [data-i18n*] + set <html dir/lang>
+    renderPicked("home");      // dynamic strings not covered by data-i18n
+    renderPicked("office");
+    document.getElementById("testResult").textContent = "";
+    setStatus("");
+  };
+}
+
 ["home", "office"].forEach((w) => { wireSearch(w); wireGps(w); });
 document.getElementById("testBtn").onclick = testRoute;
 document.getElementById("saveBtn").onclick = save;
 document.getElementById("resetBtn").onclick = resetToDefaults;
+wireLang();
+I18N.apply();
 load();

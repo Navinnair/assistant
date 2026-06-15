@@ -80,7 +80,7 @@
   --md-elev-4: 0 6px 10px 4px rgba(0,0,0,0.15), 0 2px 3px rgba(0,0,0,0.3);
 
   /* --- Type scale (Roboto). label/body/title/headline/display --- */
-  --md-font: 'Roboto', -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --md-font: 'Roboto', 'Noto Sans Malayalam', 'Vazirmatn', -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
   --md-display-small: 700 2.25rem/2.75rem var(--md-font);
   --md-headline-small: 600 1.5rem/2rem var(--md-font);
   --md-title-large: 700 1.375rem/1.75rem var(--md-font);
@@ -215,6 +215,24 @@
   font: var(--md-label-large);
   cursor: pointer;
 }
+
+/* ============================================================
+   Right-to-left (Persian). Flip the bits that use physical
+   direction; flex/grid layouts mirror automatically under dir=rtl.
+   ============================================================ */
+[dir="rtl"] body { text-align: right; }
+[dir="rtl"] .day-arrow svg { transform: scaleX(-1); }
+[dir="rtl"] .chev { transform: scaleX(-1); }
+[dir="rtl"] .route { border-left: none; border-right: 4px solid var(--outline); border-radius: 16px 4px 4px 16px; }
+[dir="rtl"] .route.chosen { border-right-color: var(--accent); }
+[dir="rtl"] .route-num { margin-right: 0; margin-left: 9px; }
+[dir="rtl"] .ts-change, [dir="rtl"] .trip-summary .ts-change { margin-left: 0; margin-right: auto; }
+[dir="rtl"] .day-temp { margin-left: 0; margin-right: auto; }
+[dir="rtl"] .strip-chevron { margin-left: 0; margin-right: auto; }
+[dir="rtl"] .route-legs { padding-left: 0; padding-right: 18px; }
+[dir="rtl"] .route-legs::before { left: auto; right: 5px; }
+[dir="rtl"] .leg-stop .dot { left: auto; right: -16px; }
+[dir="rtl"] .occupancy, [dir="rtl"] .delay-tag, [dir="rtl"] .leg-meta { margin-left: 0; margin-right: 6px; }
 
 /* M3 icon button — 48dp target. Shared by every app header. */
 .icon-btn {
